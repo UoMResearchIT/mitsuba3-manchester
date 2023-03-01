@@ -4,82 +4,9 @@
 #include <mitsuba/render/medium.h>
 #include <mitsuba/render/texture.h>
 
+// std::cout << "!!!" << std::endl;
+
 NAMESPACE_BEGIN(mitsuba)
-
-/**!
-
-.. _emitter-spot:
-
-Spot light source (:monosp:`spot`)
-------------------------------------
-
-.. pluginparameters::
-
- * - intensity
-   - |spectrum|
-   - Specifies the maximum radiant intensity at the center in units of power per unit steradian. (Default: 1).
-     This cannot be spatially varying (e.g. have bitmap as type).
-   - |exposed|, |differentiable|
-
- * - cutoff_angle
-   - |float|
-   - Cutoff angle, beyond which the spot light is completely black (Default: 20 degrees)
-
- * - beam_width
-   - |float|
-   - Subtended angle of the central beam portion (Default: :math:`cutoff_angle \times 3/4`)
-
- * - texture
-   - |texture|
-   - An optional texture to be projected along the spot light. This must be spatially varying (e.g. have bitmap as type).
-   - |exposed|, |differentiable|
-
- * - to_world
-   - |transform|
-   - Specifies an optional emitter-to-world transformation.  (Default: none, i.e. emitter space = world space)
-   - |exposed|
-
-This plugin provides a spot light with a linear falloff. In its local coordinate system, the spot light is
-positioned at the origin and points along the positive Z direction. It can be conveniently reoriented
-using the lookat tag, e.g.:
-
-.. tabs::
-    .. code-tab:: xml
-        :name: spot-light
-
-        <emitter type="spot">
-            <transform name="to_world">
-                <!-- Orient the light so that points from (1, 1, 1) towards (1, 2, 1) -->
-                <lookat origin="1, 1, 1" target="1, 2, 1" up="0, 0, 1"/>
-            </transform>
-            <rgb name="intensity" value="1.0"/>
-        </emitter>
-
-    .. code-tab:: python
-
-        'type': 'spot',
-        'to_world': mi.ScalarTransform4f.lookat(
-            origin=[1, 1, 1],
-            target=[1, 2, 1],
-            up=[0, 0, 1]
-        ),
-        'intensity': {
-            'type': 'spectrum',
-            'value': 1.0,
-        }
-
-The intensity linearly ramps up from cutoff_angle to beam_width (both specified in degrees),
-after which it remains at the maximum value. A projection texture may optionally be supplied.
-
-.. subfigstart::
-.. subfigure:: ../../resources/data/docs/images/render/emitter_spot_no_texture.jpg
-   :caption: Two spot lights with different colors and no texture specified.
-.. subfigure:: ../../resources/data/docs/images/render/emitter_spot_texture.jpg
-   :caption: A spot light with a texture specified.
-.. subfigend::
-   :label: fig-spot-light
-
- */
 
 template <typename Float, typename Spectrum>
 class PhotonEmitter final : public Emitter<Float, Spectrum> {
@@ -107,101 +34,47 @@ public:
         m_cos_beam_width   = dr::cos(m_beam_width);
         Assert(m_cutoff_angle >= m_beam_width);
         m_uv_factor = dr::tan(m_cutoff_angle);
-
-
-
-
-        
     }
 
-    // Traverse the attributes and object graph of this instance
-    // Implementing this function enables recursive traversal of C++ scene graphs. It is e.g. used to determine the set of differentiable parameters when using Mitsuba for optimization.
-    void traverse(TraversalCallback *callback) override {
-        callback->put_object("intensity",   m_intensity.get(), +ParamFlags::Differentiable);
-        callback->put_parameter("to_world", *m_to_world.ptr(), +ParamFlags::NonDifferentiable);
-    }
-
-    // This function should be invoked when attributes (obtained via \ref traverse) are modified in some way. The object can then update its internal state so that derived quantities are consistent with the change.
-    void parameters_changed(const std::vector<std::string> &keys) override {
-        if (keys.empty() || string::contains(keys, "to_world")) {
-            // Update the scalar value of the matrix
-            m_to_world = m_to_world.value();
-        }
-        Base::parameters_changed();
-    }
-
-    /**
-     * Computes the UV coordinates corresponding to a direction in the local frame.
-     */
-    Point2f direction_to_uv(const Vector3f &local_dir) const {
-        return Point2f(
-            0.5f + 0.5f * local_dir.x() / (local_dir.z() * m_uv_factor),
-            0.5f + 0.5f * local_dir.y() / (local_dir.z() * m_uv_factor)
-        );
-    }
-
-    /**
-     * Returns a factor in [0, 1] accounting for the falloff profile of
-     * the spot emitter in direction `d`.
-     *
-     * Does not include the emitted radiance in that direction.
-     */
-    Float falloff_curve(const Vector3f &d, Mask /*active*/) const {
-        // Vector3f local_dir = dr::normalize(d);
-        // Float cos_theta    = local_dir.z();
-        // Float beam_res = dr::select(
-        //     // acos: Arccosine approximation based on the CEPHES library.
-        //     cos_theta >= m_cos_beam_width, 1.f,
-        //     (m_cutoff_angle - dr::acos(cos_theta)) * m_inv_transition_width);
-
-        // return dr::select(cos_theta > m_cos_cutoff_angle, beam_res, 0.f);
-        return 1.0f;
-    }
 
     std::pair<Ray3f, Spectrum> sample_ray(Float time, Float wavelength_sample,
                                           const Point2f &spatial_sample,
                                           const Point2f & /*dir_sample*/,
                                           Mask active) const override {
         MI_MASKED_FUNCTION(ProfilerPhase::EndpointSampleRay, active);
-
         // 1. Sample directional component
-        // generates a random 3D vector
-        // Uniformly sample a vector that lies within a given cone of angles around the Z axis
         // Vector3f local_dir = warp::square_to_uniform_cone(spatial_sample, (Float) m_cos_cutoff_angle);
         Vector3f fixed_dir = Vector3f(0.f, 0.f, 1.f);
-        // Vector3f local_dir (0.f,0.f,1.f);
         Vector3f local_dir = dr::normalize(fixed_dir);
-
-        // calculate the probability density function, for weighting the contribution of this sample in a Monte Carlo integration.
-        Float pdf_dir = warp::square_to_uniform_cone_pdf(local_dir, (Float) m_cos_cutoff_angle);
-
+        // Float pdf_dir = warp::square_to_uniform_cone_pdf(local_dir, (Float) m_cos_cutoff_angle);
+        Float pdf_dir = 445029;
         // 2. Sample spectrum
         // defining a SurfaceInteraction3f object si and initializing its position, time and UV values
         auto si = dr::zeros<SurfaceInteraction3f>();
         si.time = time;
         si.p    = m_to_world.value().translation();
-        si.uv   = direction_to_uv(local_dir);
+        si.uv   = Point2f(0.5,0.5);
         // generate a set of random wavelengths and the corresponding spectral weight
         auto [wavelengths, spec_weight] =
             sample_wavelengths(si, wavelength_sample, active);
         //  compute a falloff value for the given direction and active component.
-        Float falloff = falloff_curve(local_dir, active);
+        Float falloff = 1.0f;
+        // std::cout << spec_weight << std::endl;
         return { Ray3f(si.p, m_to_world.value() * local_dir, time, wavelengths),
-                 depolarizer<Spectrum>(spec_weight * falloff / pdf_dir) };
+                 (spec_weight * falloff / pdf_dir) };
     } 
 
     std::pair<DirectionSample3f, Spectrum> sample_direction(const Interaction3f &it,
                                                             const Point2f &/*sample*/,
                                                             Mask active) const override {
         MI_MASKED_FUNCTION(ProfilerPhase::EndpointSampleDirection, active);
-
         DirectionSample3f ds;
         ds.p        = m_to_world.value().translation();
         ds.n        = 0.f;
         ds.uv       = 0.f;
         ds.pdf      = 1.f;
         ds.time     = it.time;
-        ds.delta    = true;
+        ds.delta    = true; 
         ds.emitter  = this;
         ds.d        = ds.p - it.p;
         ds.dist     = dr::norm(ds.d);
@@ -209,7 +82,8 @@ public:
         ds.d        *= inv_dist;
         Vector3f local_d = m_to_world.value().inverse() * -ds.d;
         // Evaluate emitted radiance & falloff profile
-        Float falloff = falloff_curve(local_d, active);
+        // Float falloff = falloff_curve(local_d, active);
+        Float falloff = 1.0f;
         active &= falloff > 0.f;  // Avoid invalid texture lookups
 
         SurfaceInteraction3f si      = dr::zeros<SurfaceInteraction3f>();
