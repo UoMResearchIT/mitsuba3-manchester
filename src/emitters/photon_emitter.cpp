@@ -4,8 +4,6 @@
 #include <mitsuba/render/medium.h>
 #include <mitsuba/render/texture.h>
 
-// std::cout << "!!!" << std::endl;
-
 NAMESPACE_BEGIN(mitsuba)
 
 template <typename Float, typename Spectrum>
@@ -59,7 +57,6 @@ public:
             sample_wavelengths(si, wavelength_sample, active);
         //  compute a falloff value for the given direction and active component.
         Float falloff = 1.0f;
-        // std::cout << spec_weight << std::endl;
         return { Ray3f(si.p, m_to_world.value() * local_dir, time, wavelengths),
                  (spec_weight * falloff / pdf_dir) };
     } 

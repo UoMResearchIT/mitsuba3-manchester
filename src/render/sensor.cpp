@@ -88,6 +88,7 @@ Sensor<Float, Spectrum>::sample_ray_differential(Float time, Float sample1, cons
 
     // Vector2f dx(1.f / m_resolution.x(), 0.f);
     // Vector2f dy(0.f, 1.f / m_resolution.y());
+    RayDifferential3f result_ray(temp_ray);
 
     // // Sample a result_ray for X+1
     // std::tie(temp_ray, std::ignore) = sample_ray(time, sample1, sample2 + dx, sample3, active);
