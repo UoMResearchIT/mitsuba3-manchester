@@ -4,6 +4,8 @@
 #include <mitsuba/render/medium.h>
 #include <mitsuba/render/texture.h>
 
+// std::cout << "!!!" << std::endl;
+
 NAMESPACE_BEGIN(mitsuba)
 
 template <typename Float, typename Spectrum>
@@ -23,8 +25,8 @@ public:
 
         dr::set_attr(this, "flags", m_flags);
         // degree to radiance: degree * pi / 180
-        m_cutoff_angle = dr::deg_to_rad(0.05f);
-        m_beam_width   = dr::deg_to_rad(0.05f*3.0f / 4.0f);
+        m_cutoff_angle = dr::deg_to_rad(0.01f);
+        m_beam_width   = dr::deg_to_rad(0.01f*3.0f / 4.0f);
         // if the m_cutoff_angle is equal to m_beam_width, the denominator will be 0, it's impossible!
         m_inv_transition_width = 1.0f / (m_cutoff_angle - m_beam_width);
         
@@ -32,6 +34,10 @@ public:
         m_cos_beam_width   = dr::cos(m_beam_width);
         Assert(m_cutoff_angle >= m_beam_width);
         m_uv_factor = dr::tan(m_cutoff_angle);
+        // Avoid baking
+        dr::make_opaque(m_beam_width, m_cutoff_angle,
+                        m_cos_beam_width, m_cos_cutoff_angle,
+                        m_inv_transition_width);
     }
 
 
@@ -40,12 +46,17 @@ public:
                                           const Point2f & /*dir_sample*/,
                                           Mask active) const override {
         MI_MASKED_FUNCTION(ProfilerPhase::EndpointSampleRay, active);
+
         // 1. Sample directional component
         // Vector3f local_dir = warp::square_to_uniform_cone(spatial_sample, (Float) m_cos_cutoff_angle);
         Vector3f fixed_dir = Vector3f(0.f, 0.f, 1.f);
         Vector3f local_dir = dr::normalize(fixed_dir);
         // Float pdf_dir = warp::square_to_uniform_cone_pdf(local_dir, (Float) m_cos_cutoff_angle);
+        
+        // if (pdf_dir * Vector3f(0,0,1) != fixed_dir)
+        //     pdf_dir = 0;
         Float pdf_dir = 445029;
+                        
         // 2. Sample spectrum
         // defining a SurfaceInteraction3f object si and initializing its position, time and UV values
         auto si = dr::zeros<SurfaceInteraction3f>();
@@ -55,10 +66,12 @@ public:
         // generate a set of random wavelengths and the corresponding spectral weight
         auto [wavelengths, spec_weight] =
             sample_wavelengths(si, wavelength_sample, active);
+        
         //  compute a falloff value for the given direction and active component.
         Float falloff = 1.0f;
-        return { Ray3f(si.p, m_to_world.value() * local_dir, time, wavelengths),
-                 (spec_weight * falloff / pdf_dir) };
+        Ray3f result = Ray3f(si.p, m_to_world.value() * local_dir, time, wavelengths);
+        // std::cout << result << std::endl;
+        return { result, (spec_weight * falloff / pdf_dir) };
     } 
 
     std::pair<DirectionSample3f, Spectrum> sample_direction(const Interaction3f &it,
@@ -116,8 +129,10 @@ public:
                        Mask active) const override {
         Wavelength wav;
         Spectrum weight;
+        // std::tie(wav, weight) = m_intensity->sample_spectrum(
+        //         si, math::sample_shifted<Wavelength>(sample), active);
         std::tie(wav, weight) = m_intensity->sample_spectrum(
-                si, math::sample_shifted<Wavelength>(sample), active);
+                si, sample, active);
 
         return { wav, weight };
     }
