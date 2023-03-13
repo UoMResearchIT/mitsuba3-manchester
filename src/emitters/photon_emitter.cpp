@@ -33,7 +33,6 @@ public:
         m_cos_cutoff_angle = dr::cos(m_cutoff_angle);
         m_cos_beam_width   = dr::cos(m_beam_width);
         Assert(dr::all(m_cutoff_angle >= m_beam_width));
-        m_uv_factor = dr::tan(m_cutoff_angle);
         // Avoid baking
         dr::make_opaque(m_beam_width, m_cutoff_angle,
                         m_cos_beam_width, m_cos_cutoff_angle,
