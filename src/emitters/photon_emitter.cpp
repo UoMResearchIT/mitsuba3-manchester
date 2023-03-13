@@ -161,8 +161,8 @@ public:
     MI_DECLARE_CLASS()
 private:
     ref<Texture> m_intensity;
-    ScalarFloat m_beam_width, m_cutoff_angle, m_uv_factor;
-    ScalarFloat m_cos_beam_width, m_cos_cutoff_angle, m_inv_transition_width;
+    Float m_beam_width, m_cutoff_angle;
+    Float m_cos_beam_width, m_cos_cutoff_angle, m_inv_transition_width;
 };
 
 
