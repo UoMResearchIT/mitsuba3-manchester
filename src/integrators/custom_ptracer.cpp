@@ -165,14 +165,15 @@ public:
         Point2f direction_sample = sampler->next_2d(),
                 position_sample  = sampler->next_2d();
 
+        ///////////////////////////////////////////////////
+        jit_set_flag(JitFlag::LoopRecord, false);
+        jit_set_flag(JitFlag::VCallRecord, false);
+
         //Sample one ray from an emitter in the scene.
         auto [ray, ray_weight, emitter] = scene->sample_emitter_ray(
             time, wavelength_sample, direction_sample, position_sample);
-
-        // auto [ray, ray_weight, emitter] = scene->sample_emitter_ray(
-        //     time, 0.5, {0.5, 0.5}, {0.5, 0.5});
-        // std::cout << ray << std::endl;
-        // std::cout << emitter << std::endl;
+        jit_set_flag(JitFlag::LoopRecord, true);
+        jit_set_flag(JitFlag::VCallRecord, true);
         return { ray, ray_weight };
     }
 
