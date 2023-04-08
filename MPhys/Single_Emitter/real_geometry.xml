@@ -9,12 +9,14 @@
 	</integrator>
 	
 	<sensor type="perspective">
-		<float name="fov" value="100" />
+		<float name="fov" value="40" />
 
 		<transform name="to_world">
 			<!-- <lookat origin="6000, 1100 ,792" target="0, 1500, 1000" up="0, 0, 1" /> -->
+			<!-- Look at the right wall -->
+			<lookat origin="0, 2700 ,300" target="0, 3000, 300" up="0, 0, 1" />
 			
-			<lookat origin="0, 1100 ,792" target="0, 1500, 1500" up="0, 0, 1" />
+			<!-- <lookat origin="0, 1100 ,950" target="0, 1500, 1500" up="0, 0, 1" /> -->
 		</transform>
 		<sampler type="independent">
 			<integer name="sample_count" value="$spp" />
@@ -24,7 +26,7 @@
 			<integer name="width" value="$resx" />
 			<integer name="height" value="$resy" />
 			<string name="file_format" value="openexr" />
-			<string name="pixel_format" value="rgb" />
+			<string name="pixel_format" value="luminance" />
 			
 			<string name="component_format" value="uint32" />
 			<rfilter type="tent" />
@@ -56,7 +58,7 @@
 		</bsdf>
 	</bsdf>   
 
-    <shape type="cube" id="mirror_spherical">
+    <!-- <shape type="cube" id="mirror_spherical">
 		<transform name="to_world">
             <scale x="1500" y="650" z="33" />
             
@@ -80,9 +82,9 @@
 			<lookat origin="0, 1500, 1120" target="0,1000,710" up="0, 0, 1" />
 		</transform>
 		<ref id="test" />	
-    </shape>
+    </shape> -->
 
-	 <!-- <shape type="rectangle" id="backwall">
+	 <shape type="rectangle" id="backwall">
 		<transform name="to_world">
 			<scale x="3000" y="3000" />
 			<lookat origin="-1000,1500,500" target="0, 1500, 500" up="0, 1, 0" />
@@ -130,10 +132,10 @@
         <bsdf type="diffuse">
             <rgb name="reflectance" value="0.56, 0.23, 0.54" />
         </bsdf>
-	</shape> -->
+	</shape>
     <emitter type="photon_emitter" id="pE1">
 		<string name="filename" value="photons_geometry.txt"/>
-        <rgb name="intensity" value="20000000000.0"/>
+        <rgb name="intensity" value="1000.0"/>
     </emitter>
 
 </scene> 
