@@ -1,5 +1,5 @@
 <scene version="3.0.2">
-	<default name="spp" value="640" />
+	<default name="spp" value="1" />
 	<default name="resy" value="1024" />
 	<default name="resx" value="1024" />
 	<default name="max_depth" value="50" />
@@ -9,11 +9,14 @@
 	</integrator>
 	
 	<sensor type="perspective">
-		<float name="fov" value="40" />
+		<float name="fov" value="60" />
 
 		<transform name="to_world">
             <!-- check the whole scene -->
-			<lookat origin="100,-3000,800" target="0,0,1000" up="0, 0, 1"/>
+			<!-- <lookat origin="4000, 1100 ,792" target="0, 1500, 1000" up="0, 0, 1" /> -->
+			<lookat origin="0, 1100 ,792" target="0, 1600, 1400" up="0, 0, 1" />
+
+			<!-- <lookat origin="100,-3000,800" target="0,0,1000" up="0, 0, 1"/> -->
 			<!-- Check the detector-->
             <!-- <lookat origin="0,0,1000" target="200,0,1500" up="0, 0, 1"/> -->
             <!-- <lookat origin="-2499,0,2600" target="200,0,1500" up="0, 0, 1"/> -->
@@ -61,67 +64,102 @@
     <shape type="obj">
         <string name="filename" value="mirrors.obj"/>
         <transform name="to_world">
-			<lookat origin="0,0,0" target="10,0, -1" up="0, 0, 1" />
+			<lookat origin="0,1500,0" target="0,1600, 0" up="0, 0, 1" />
 		</transform>
 		<ref id="MirrorBSDF" />	
     </shape>
 
-    <shape type="obj">
+	<!-- <shape type="obj">
+        <string name="filename" value="RichGeo1.obj"/>
+        <transform name="to_world">
+			<lookat origin="0,0,0" target="0,1600, 0" up="0, 0, 1" />
+		</transform>
+		<ref id="MirrorBSDF" />	
+    </shape> -->
+
+    <!-- <shape type="obj">
         <string name="filename" value="detector_thick.obj"/>
         <transform name="to_world">
             <rotate x ="1"  angle="90"/>
-			<lookat origin="200,0,1500" target="-10,0,0" up="1, 0, 0" />
+			<lookat origin="0,1500,500" target="0,1600,500" up="1, 0, 0" />
         </transform>
+		<ref id="test" />	
+    </shape> -->
+
+	<shape type="rectangle" id="detector">
+		<transform name="to_world">
+            <scale x="1000" y="500" z="0.5" />
+			<lookat origin="0, 1600, 1400" target="0,1200,500" up="0, 0, 1" />
+		</transform>
 		<ref id="test" />	
     </shape>
 
     
 	<!-- Constant light to debug-->
- 	<emitter type='constant' id='cs1'>
+ 	<!-- <emitter type='constant' id='cs1'>
         <rgb name='radiance' value='1'/>
-    </emitter>
-
-    <emitter type="spot">
-        <transform name="to_world">
-            <lookat origin="-10, 0, -100" target="100,0,500" up="0,1,0" />
-        </transform>
-        <float name="cutoff_angle" value="1"/>
-        <rgb name="intensity" value="200000000.0" />
-    </emitter>
-
-    <!-- <emitter type="photon_emitter">
-        <transform name="to_world">
-            <lookat origin="-10, 0, -100" target="100,0,500" up="0,1,0" />
-        </transform>
-        <rgb name="intensity" value="200000000.0" />
     </emitter> -->
 
-    <!-- BOX -->
-    <shape type="rectangle" id="backwall">
+    <!-- <emitter type="spot">
+        <transform name="to_world">
+            <lookat origin="-0.0868163,1028.03,102.747" target="-0.0382954,1029.025146,102.832613" up="0,0,1" />
+        </transform>
+        <float name="cutoff_angle" value="10"/>
+        <rgb name="intensity" value="20000000.0" />
+    </emitter> -->
+
+    <emitter type="photon_emitter" id="pE1">
+		<string name="filename" value="emitter_real.txt"/>
+        <rgb name="intensity" value="200000000.0"/>
+    </emitter>
+
+	 <shape type="rectangle" id="backwall">
 		<transform name="to_world">
-			<scale x="5000" y="5000" />
-			<lookat origin="0,2500,0" target="0, -1, 0" up="0, 0, 1" />
+			<scale x="3000" y="3000" />
+			<lookat origin="-1000,1500,500" target="0, 1500, 500" up="0, 1, 0" />
 		</transform>
         <bsdf type="diffuse">
-            <rgb name="reflectance" value="1, 1, 1" />
+            <rgb name="reflectance" value="0.4, 1, 0.2" />
         </bsdf>
 	</shape>
-    <shape type="rectangle" id="leftwall">
+
+	<shape type="rectangle" id="ceiling">
 		<transform name="to_world">
-			<scale x="5000" y="5000" />
-			<lookat origin="-2500,0,0," target="0, 0, 0" up="0, 0, 1" />
+			<scale x="3000" y="3000" />
+			<lookat origin="0,1500,3000" target="0, 1500, 0" up="0, 1, 0" />
+		</transform>
+        <bsdf type="diffuse">
+            <rgb name="reflectance" value="0.8, 0.3, 0.45" />
+        </bsdf>
+	</shape>
+
+	<shape type="rectangle" id="leftwall">
+		<transform name="to_world">
+			<scale x="3000" y="3000" z="3000" />
+			<lookat origin="0,0,500" target="0, 1500, 500" up="0, 0, 1" />
 		</transform>
         <bsdf type="diffuse">
             <rgb name="reflectance" value="0.32, 0.46, 0.23" />
         </bsdf>
 	</shape>
-    <shape type="rectangle" id="rightwall">
+
+	<shape type="rectangle" id="rightwall">
 		<transform name="to_world">
-			<scale x="5000" y="5000" />
-			<lookat origin="2500,0,0," target="0, 0, 0" up="0, 0, 1" />
+			<scale x="3000" y="3000" z="3000" />
+			<lookat origin="0,3000,500" target="0, 1500, 500" up="0, 0, 1" />
 		</transform>
         <bsdf type="diffuse">
-            <rgb name="reflectance" value="0.32, 0.46, 0.23" />
+            <rgb name="reflectance" value="0.92, 0.58, 1" />
+        </bsdf>
+	</shape>
+
+	<shape type="rectangle" id="floor">
+		<transform name="to_world">
+			<scale x="3000" y="3000" z="3000" />
+			<lookat origin="0,1500,-1000" target="0, 1500, 3000" up="0, 1, 0" />
+		</transform>
+        <bsdf type="diffuse">
+            <rgb name="reflectance" value="0.56, 0.23, 0.54" />
         </bsdf>
 	</shape>
 </scene>
