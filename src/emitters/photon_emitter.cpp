@@ -122,11 +122,14 @@ public:
     } 
 
     std::pair<DirectionSample3f, Spectrum> sample_direction(const Interaction3f &it,
-                                                            const Point2f &/*sample*/,
+                                                            const Point2f &sample,
                                                             Mask active) const override {
         MI_MASKED_FUNCTION(ProfilerPhase::EndpointSampleDirection, active);
+        UInt32 index =  dr::arange<UInt32>(dr::width(sample)) % dr::width(m_transforms);
+        Matrix4f transforms = dr::gather<Matrix4f>(m_transforms, index);
         DirectionSample3f ds;
-        ds.p        = m_to_world.value().translation();
+        ds.p        = Transform4f(transforms).translation();
+        // ds.p        = m_to_world.value().translation();
         ds.n        = 0.f;
         ds.uv       = 0.f;
         ds.pdf      = 1.f;
@@ -137,7 +140,7 @@ public:
         ds.dist     = dr::norm(ds.d);
         Float inv_dist = dr::rcp(ds.dist);
         ds.d        *= inv_dist;
-        Vector3f local_d = m_to_world.value().inverse() * -ds.d;
+        // Vector3f local_d = m_to_world.value().inverse() * -ds.d;
         Float falloff = 1.0f;
         active &= falloff > 0.f;  // Avoid invalid texture lookups
 
@@ -148,7 +151,7 @@ public:
         si.p                         = ds.p;
         UnpolarizedSpectrum radiance = m_intensity->eval(si, active);
 
-        return { ds, depolarizer<Spectrum>(radiance & active) * (falloff * dr::sqr(inv_dist)) };
+        return { ds, depolarizer<Spectrum>(radiance & active) * (falloff * dr::sqr(inv_dist))};
     }
 
     Float pdf_direction(const Interaction3f &,
