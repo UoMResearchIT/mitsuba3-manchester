@@ -32,7 +32,6 @@ public:
         // The first line of the file shows the number of the photons
         size_t count;
         binaryStream->read(&count, sizeof(size_t));
-        std::cout << "The number of photons is: " << count << std::endl;
         size_t counter = 0.;
         // Create vectors to store the coodrinations
         std::vector<float> origin_x, origin_y, origin_z, target_x, target_y, target_z;
