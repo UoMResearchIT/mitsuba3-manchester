@@ -26,41 +26,36 @@ public:
         FileResolver *fs = Thread::thread()->file_resolver();
         fs::path file_path = fs->resolve(props.string("filename"));
         m_filename = file_path.filename().string();
-        ref<FileStream> fileStream = new FileStream(file_path, FileStream::ERead);
+        ref<FileStream> binaryStream = new FileStream(file_path, FileStream::ERead);
+        binaryStream -> set_byte_order(Stream::ELittleEndian);
+
         // The first line of the file shows the number of the photons
-        size_t count = std::stof(fileStream->read_line());
+        size_t count;
+        binaryStream->read(&count, sizeof(size_t));
+        std::cout << "The number of photons is: " << count << std::endl;
         size_t counter = 0.;
         // Create vectors to store the coodrinations
         std::vector<float> origin_x, origin_y, origin_z, target_x, target_y, target_z;
         while (counter != count) {
-            std::string line1 = fileStream->read_line();
-            // Create a stringstream object with the string
-            std::stringstream ss1(line1);
             // Declare three float variables
             float x,y,z;
-            // Extract x,y,z from the stringstream and ignore commas
-            ss1 >> x >> std::ws;
-            ss1.ignore();
-            ss1 >> y >> std::ws;
-            ss1.ignore();
-            ss1 >> z;
+            binaryStream->read(&x, sizeof(float));
+            binaryStream->read(&y, sizeof(float));
+            binaryStream->read(&z, sizeof(float));
             origin_x.push_back(x);
             origin_y.push_back(y);
             origin_z.push_back(z);
-            std::string line2 = fileStream->read_line();
-            std::stringstream ss2(line2);
+            // Declare three float variables
             float a,b,c;
-            ss2 >> a >> std::ws;
-            ss2.ignore();
-            ss2 >> b >> std::ws;
-            ss2.ignore();
-            ss2 >> c;
+            binaryStream->read(&a, sizeof(float));
+            binaryStream->read(&b, sizeof(float));
+            binaryStream->read(&c, sizeof(float));
             target_x.push_back(a);
             target_y.push_back(b);
             target_z.push_back(c);
             counter ++;
         }
-        fileStream->close();
+        binaryStream->close();
         // Load them each into separate Float variables
         Float float_origin_x = dr::load<Float>(origin_x.data(), count);
         Float float_origin_y = dr::load<Float>(origin_y.data(), count);
@@ -90,11 +85,11 @@ public:
         // Avoid baking
         dr::make_opaque(m_beam_width, m_cutoff_angle,
                         m_cos_beam_width, m_cos_cutoff_angle,
-                        m_inv_transition_width,m_transforms);
+                        m_inv_transition_width, m_transforms);
     }
 
     std::pair<Ray3f, Spectrum> sample_ray(Float time, Float wavelength_sample,
-                                          const Point2f &spatial_sample,
+                                          const Point2f &/*patial_sample*/,
                                           const Point2f & /*dir_sample*/,
                                           Mask active) const override {
         MI_MASKED_FUNCTION(ProfilerPhase::EndpointSampleRay, active);
