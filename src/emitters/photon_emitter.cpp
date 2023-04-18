@@ -6,6 +6,16 @@
 #include <mitsuba/render/texture.h>
 #include <mitsuba/core/fstream.h>
 #include <mitsuba/core/fresolver.h>
+#include <mitsuba/core/fresolver.h>
+#include <mitsuba/core/properties.h>
+#include <mitsuba/core/spectrum.h>
+#include <mitsuba/core/string.h>
+#include <mitsuba/core/transform.h>
+#include <mitsuba/render/srgb.h>
+#include <mitsuba/render/volume.h>
+#include <mitsuba/render/volumegrid.h>
+#include <drjit/dynamic.h>
+#include <drjit/texture.h>
 #include <vector>
 
 // std::cout << "!!!" << std::endl;
@@ -16,45 +26,71 @@ template <typename Float, typename Spectrum>
 class PhotonEmitter final : public Emitter<Float, Spectrum> {
 public:
     MI_IMPORT_BASE(Emitter, m_flags, m_medium, m_to_world)
-    MI_IMPORT_TYPES(Scene, Texture)
+    MI_IMPORT_TYPES(Scene, Texture,VolumeGrid)
 
     PhotonEmitter(const Properties &props) : Base(props) {
         m_flags = +EmitterFlags::DeltaPosition;
         m_intensity = props.texture_d65<Texture>("intensity", 1.f);
 
-        // Read the file
-        FileResolver *fs = Thread::thread()->file_resolver();
-        fs::path file_path = fs->resolve(props.string("filename"));
-        m_filename = file_path.filename().string();
-        ref<FileStream> binaryStream = new FileStream(file_path, FileStream::ERead);
-        binaryStream -> set_byte_order(Stream::ELittleEndian);
-
-        // The first line of the file shows the number of the photons
-        size_t count;
-        binaryStream->read(&count, sizeof(size_t));
-        size_t counter = 0.;
-        // Create vectors to store the coodrinations
+        ref<Object> other = props.object("photon_list");
+        VolumeGrid *volume_grid = dynamic_cast<VolumeGrid *>(other.get());
+        float *ptr = volume_grid->data();
+        int count= ptr[0];
+        int counter = 0.;
         std::vector<float> origin_x, origin_y, origin_z, target_x, target_y, target_z;
         while (counter != count) {
-            // Declare three float variables
-            float x,y,z;
-            binaryStream->read(&x, sizeof(float));
-            binaryStream->read(&y, sizeof(float));
-            binaryStream->read(&z, sizeof(float));
+            float x = ptr[1+counter*6];
+            float y = ptr[2+counter*6];
+            float z = ptr[3+counter*6];
+
             origin_x.push_back(x);
             origin_y.push_back(y);
             origin_z.push_back(z);
             // Declare three float variables
-            float a,b,c;
-            binaryStream->read(&a, sizeof(float));
-            binaryStream->read(&b, sizeof(float));
-            binaryStream->read(&c, sizeof(float));
+            float a = ptr[4+counter*6];
+            float b = ptr[5+counter*6];
+            float c = ptr[6+counter*6];
+
             target_x.push_back(a);
             target_y.push_back(b);
             target_z.push_back(c);
             counter ++;
         }
-        binaryStream->close();
+
+        // // Read the file
+        // FileResolver *fs = Thread::thread()->file_resolver();
+        // fs::path file_path = fs->resolve(props.string("filename"));
+        // m_filename = file_path.filename().string();
+        // ref<FileStream> binaryStream = new FileStream(file_path, FileStream::ERead);
+        // binaryStream -> set_byte_order(Stream::ELittleEndian);
+
+        // // The first line of the file shows the number of the photons
+        // size_t count;
+        // binaryStream->read(&count, sizeof(size_t));
+        // // std::cout << "The number of photons is: " << count << std::endl;
+        // size_t counter = 0.;
+        // // Create vectors to store the coodrinations
+        // std::vector<float> origin_x, origin_y, origin_z, target_x, target_y, target_z;
+        // while (counter != count) {
+        //     // Declare three float variables
+        //     float x,y,z;
+        //     binaryStream->read(&x, sizeof(float));
+        //     binaryStream->read(&y, sizeof(float));
+        //     binaryStream->read(&z, sizeof(float));
+        //     origin_x.push_back(x);
+        //     origin_y.push_back(y);
+        //     origin_z.push_back(z);
+        //     // Declare three float variables
+        //     float a,b,c;
+        //     binaryStream->read(&a, sizeof(float));
+        //     binaryStream->read(&b, sizeof(float));
+        //     binaryStream->read(&c, sizeof(float));
+        //     target_x.push_back(a);
+        //     target_y.push_back(b);
+        //     target_z.push_back(c);
+        //     counter ++;
+        // }
+        // binaryStream->close();
         // Load them each into separate Float variables
         Float float_origin_x = dr::load<Float>(origin_x.data(), count);
         Float float_origin_y = dr::load<Float>(origin_y.data(), count);
