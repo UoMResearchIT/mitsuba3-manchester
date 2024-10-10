@@ -173,7 +173,7 @@ def run_experiment(photon_list):
         'sensor': {
             'type': 'perspective',
             'fov': 40,
-            'to_world': mi.ScalarTransform4f.look_at(origin=[0, 1100, 950],
+            'to_world': mi.ScalarTransform4f().look_at(origin=[0, 1100, 950],
                                                      target=[0, 1500, 1500],
                                                      up=[0, 0, 1]),
             'sampler': {
@@ -231,7 +231,7 @@ def run_experiment(photon_list):
     
         'spherical_mirror': {
             'type': 'cube',
-            'to_world': mi.ScalarTransform4f.look_at(
+            'to_world': mi.ScalarTransform4f().look_at(
                 origin=[0, 2000, 355], target=[0, 1000, 600], up=[0, 0, 1]).scale([1500, 650, 33]),
             'bsdf_id': {
                 'type': 'ref',
@@ -241,7 +241,7 @@ def run_experiment(photon_list):
     
         'flat_mirror': {
             'type': 'rectangle',
-            'to_world': mi.ScalarTransform4f.look_at(
+            'to_world': mi.ScalarTransform4f().look_at(
                 origin=[0, 1000, 710], target=[0, 2000, 900], up=[0, 0, 1]).scale([740, 440, 0.1]),
             'bsdf_id': {
                 'type': 'ref',
@@ -251,7 +251,7 @@ def run_experiment(photon_list):
     
         'detector': {
             'type': 'rectangle',
-            'to_world': mi.ScalarTransform4f.look_at(
+            'to_world': mi.ScalarTransform4f().look_at(
                 origin=[0, 1500, 1120], target=[0, 1000, 710], up=[0, 0, 1]).scale([1000, 500, 0.5]),
             'bsdf_id': {
                 'type': 'ref',
@@ -261,7 +261,7 @@ def run_experiment(photon_list):
     
         'backwall': {
             'type': 'rectangle',
-            'to_world': mi.ScalarTransform4f.look_at(
+            'to_world': mi.ScalarTransform4f().look_at(
                 origin=[-1000, 1500, 500], target=[0, 1500, 500], up=[0, 1, 0]).scale([3000, 3000, 1]),
             'bsdf_id': {
                 'type': 'diffuse',
@@ -274,7 +274,7 @@ def run_experiment(photon_list):
             
         'ceiling': {
             'type': 'rectangle',
-            'to_world': mi.ScalarTransform4f.look_at(
+            'to_world': mi.ScalarTransform4f().look_at(
                 origin=[0, 1500, 3000], target=[0, 1500, 0], up=[0, 1, 0]).scale([3000, 3000, 1]),
             'bsdf_id': {
                 'type': 'diffuse',
@@ -287,7 +287,7 @@ def run_experiment(photon_list):
             
         'leftwall': {
             'type': 'rectangle',
-            'to_world': mi.ScalarTransform4f.look_at(
+            'to_world': mi.ScalarTransform4f().look_at(
                 origin=[0, 0, 500], target=[0, 1500, 500], up=[0, 0, 1]).scale([3000, 3000, 3000]),
             'bsdf_id': {
                 'type': 'diffuse',
@@ -300,7 +300,7 @@ def run_experiment(photon_list):
             
         'rightwall': {
             'type': 'rectangle',
-            'to_world': mi.ScalarTransform4f.look_at(
+            'to_world': mi.ScalarTransform4f().look_at(
                 origin=[0, 3000, 500], target=[0, 1500, 500], up=[0, 0, 1]).scale([3000, 3000, 3000]),
             'bsdf_id': {
                 'type': 'diffuse',
@@ -313,7 +313,7 @@ def run_experiment(photon_list):
     
         'floor': {
             'type': 'rectangle',
-            'to_world': mi.ScalarTransform4f.look_at(
+            'to_world': mi.ScalarTransform4f().look_at(
                 origin=[0, 1500, -1000], target=[0, 1500, 3000], up=[0, 1, 0]).scale([3000, 3000, 3000]),
             'bsdf_id': {
                 'type': 'diffuse',
