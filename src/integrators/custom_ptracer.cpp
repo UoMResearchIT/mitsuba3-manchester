@@ -68,7 +68,11 @@ public:
         // Primary & further bounces illumination
         auto [ray, throughput] = prepare_ray(scene, sensor, sampler);
         
-        trace_light_ray(ray, scene, sensor, sampler, throughput, block, sample_scale);
+        Float throughput_max = dr::max(unpolarized_spectrum(throughput));
+        Mask active = (throughput_max != 0.f);
+
+        trace_light_ray(ray, scene, sensor, sampler, throughput, block,
+                        sample_scale, active);
     }
 
     /**
@@ -240,7 +244,6 @@ public:
         dr::tie(ls) = dr::while_loop(dr::make_tuple(ls),
             [](const LoopState& ls) { return ls.active; },
             [this, scene, sensor, block, sample_scale](LoopState& ls) {        
-            
             
             BSDFPtr bsdf = ls.si.bsdf(ls.ray);
 
