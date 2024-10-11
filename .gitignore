@@ -30,8 +30,6 @@ __pycache__
 /docs/resources
 
 # new png output / csv input
-/MPhys/Single_Emitter/new*.png 
-/MPhys/Single_Emitter/diff*png
-/MPhys/Single_Emitter/llvm*.png
-/MPhys/Single_Emitter/*1000000*csv
+/MPhys/Single_Emitter/png/* 
+/MPhys/Single_Emitter/csv/*1000000*csv
 /MPhys/Single_Emitter/cluster*

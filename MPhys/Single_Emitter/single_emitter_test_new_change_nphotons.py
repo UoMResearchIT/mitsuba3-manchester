@@ -38,7 +38,7 @@ mi.variants()
 
 # #load data from original G4 output (csv format)
 # column_names = ["time (ps)", "x", "y", "z", "px", "py", "pz", "E (MeV)"]
-# photon_data_full = pd.read_csv('./Photons_1000000_filtered.csv', names = column_names)
+# photon_data_full = pd.read_csv('./csv/Photons_1000000_filtered.csv', names = column_names)
 # initial_number_of_photons = photon_data_full.count()[0]
 
 # def ev_to_nm (energy):
@@ -72,7 +72,7 @@ mi.variants()
 # photon_detected.reset_index(drop=True, inplace= True)
 
 # #Can be removed later. Outputs characteristics of saved photons.
-# photon_detected.to_csv('./test_new_photons_detected_spectral.csv' )
+# photon_detected.to_csv('./csv/test_new_photons_detected_spectral.csv' )
 # final_number_of_photons = photon_detected.count()[0]
 # fraction_detected = final_number_of_photons/initial_number_of_photons
 # print (photon_detected)
@@ -86,7 +86,7 @@ mi.variants()
 # Load in the CSV file
 # column_names = ["time (ps)", "x", "y", "z", "px", "py", "pz", "E (MeV)"]
 # The first column in the CSV file is an index column and we don't want to load that in
-photon_detected_load = pd.read_csv('test_new_photons_detected_spectral.csv', index_col=0) #, names = column_names)
+photon_detected_load = pd.read_csv('csv/test_new_photons_detected_spectral.csv', index_col=0) #, names = column_names)
 # photon_detected_load.reset_index(drop=True, inplace=True)
 # The number of photons actually in this file is somewhere just under 10^6
 # The number of repeats my local machine can cope with (using 16GB RAM) is somewhere around 20
@@ -98,7 +98,7 @@ photon_detected = pd.concat([photon_detected_load for _ in range(n_repeats)], ig
 print(photon_detected_load)
 print(photon_detected)
 
-# photon_detected = pd.read_csv('test_new_photons_detected_spectral.csv')
+# photon_detected = pd.read_csv('csv/test_new_photons_detected_spectral.csv')
 
 def generate_emitter_data(photon_data):
     """
@@ -158,7 +158,7 @@ time.sleep(10)
 def run_experiment(photon_list):
     
     start_time = time.time()
-    # scene = mi.load_file("./real_geometry_int10000.xml")
+    # scene = mi.load_file("./xml/real_geometry_int10000.xml")
     
     # Set up the scene description
     scene_description = {
@@ -349,7 +349,7 @@ def run_experiment(photon_list):
     # there are 6 columns in each of the lists so divide by this to get the number of photons
     n_photons = (len(np.array(photon_list)[0][0]) - 1) // 6
     print(mi.variant(), "intensity = 1000, n photons = ", n_photons)
-    plt.savefig(mi.variant() + ' new intensity = 1000, n photons = ' + str(n_photons))
+    plt.savefig('png/' + mi.variant() + ' new intensity = 1000, n photons = ' + str(n_photons))
     plt.close(fig)
 
     return (n_photons, load_time, load_and_render_time, elapsed_time)
@@ -376,7 +376,7 @@ def compare_images(old_fname, new_fname):
     ax3.imshow(diff_image - np.min(diff_image))
     
     print("diff image")
-    plt.savefig('diff image ' + new_fname[:-4])
+    plt.savefig('png/diff image ' + new_fname[4:-4])
     plt.close(fig)
 
 # Loop to run experiments and compare to old images
@@ -398,8 +398,8 @@ for photon_list in photon_lists:
     timing_vs_nphotons.append([n_photons, load/(n_exps-1), render/(n_exps-1), elapsed/(n_exps-1)])
 
     # Compare this image to the previous one
-    old_fname = 'intensity = 1000.png'
-    new_fname = mi.variant() + ' new intensity = 1000, n photons = '+str((len(np.array(photon_list)[0][0]) - 1) // 6)+'.png'
+    old_fname = 'png/intensity = 1000.png'
+    new_fname = 'png/' + mi.variant() + ' new intensity = 1000, n photons = '+str((len(np.array(photon_list)[0][0]) - 1) // 6)+'.png'
 
     compare_images(old_fname, new_fname)
 
@@ -408,7 +408,7 @@ for n in range(len(timing_vs_nphotons)):
     print(timing_vs_nphotons[n])
 
 # Save timing data to a CSV file
-np.savetxt(mi.variant()+'_timing_for_n_photons.csv', np.array(timing_vs_nphotons), delimiter=',')
+np.savetxt('csv/' + mi.variant()+'_timing_for_n_photons.csv', np.array(timing_vs_nphotons), delimiter=',')
 
 fig = plt.figure()
 plt.plot([tn[0] for tn in timing_vs_nphotons], [tn[1] for tn in timing_vs_nphotons], label='load')
@@ -420,7 +420,7 @@ plt.xscale('log')
 plt.ylabel('time (s)')
 plt.xlabel('Number of photons')
 plt.title('timing vs n_photons, mitsuba3 single photon emitter (' + mi.variant() + ')')
-plt.savefig(mi.variant()+'_timing_for_n_photons')
+plt.savefig('png/' + mi.variant()+'_timing_for_n_photons')
 plt.close(fig)
 
 

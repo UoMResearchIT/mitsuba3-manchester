@@ -28,7 +28,7 @@ rows_to_drop =[]
 
 #load data from original G4 output (csv format)
 column_names = ["time (ps)", "x", "y", "z", "px", "py", "pz", "E (MeV)"]
-photon_data_full = pd.read_csv('./Photons_1000000_filtered.csv', names = column_names)
+photon_data_full = pd.read_csv('./csv/Photons_1000000_filtered.csv', names = column_names)
 initial_number_of_photons = photon_data_full.count()[0]
 
 def ev_to_nm (energy):
@@ -62,7 +62,7 @@ photon_detected = photon_data_full.drop(rows_to_drop)
 photon_detected.reset_index(drop=True, inplace= True)
 
 #Can be removed later. Outputs characteristics of saved photons.
-photon_detected.to_csv('./test_new_photons_detected_spectral.csv' )
+photon_detected.to_csv('./csv/test_new_photons_detected_spectral.csv' )
 final_number_of_photons = photon_detected.count()[0]
 fraction_detected = final_number_of_photons/initial_number_of_photons
 print (photon_detected)
@@ -116,7 +116,7 @@ print (gen_photon_data)
 
 
 start_time = time.time()
-# scene = mi.load_file("./real_geometry_int10000.xml")
+# scene = mi.load_file("./xml/real_geometry_int10000.xml")
 
 # Set up the scene description
 scene_description = {
@@ -302,7 +302,7 @@ end_time = time.time()
 elapsed_time = end_time - start_time
 print(f"Elapsed time: {elapsed_time:.2f} seconds")
 print("new intensity = 1000")
-plt.savefig('new intensity = 1000')
+plt.savefig('png/new intensity = 1000')
 
 
 # In[6]:
@@ -328,11 +328,11 @@ def compare_images(old_fname, new_fname):
     ax3.imshow(diff_image - np.min(diff_image))
     
     print("diff image")
-    plt.savefig('diff image' + old_fname[:-4])
+    plt.savefig('diff image' + old_fname[4:-4])
 
 # Compare this image to the previous one
-old_fname = 'intensity = 1000.png'
-new_fname = 'new intensity = 1000.png'
+old_fname = 'png/intensity = 1000.png'
+new_fname = 'png/new intensity = 1000.png'
 
 compare_images(old_fname, new_fname)
 
@@ -340,7 +340,7 @@ compare_images(old_fname, new_fname)
 # In[7]:
 
 
-# scene = mi.load_file("./real_geometry_int500fov100.xml")
+# scene = mi.load_file("./xml/real_geometry_int500fov100.xml")
 # original_image = mi.render(scene)
 
 # start_time = time.time()
@@ -525,11 +525,11 @@ plt.figure(figsize = (20,20))
 plt.axis('off')
 plt.imshow(original_image ** (1.0 / 2.2)); 
 print("new intensity = 500, fov=100")
-plt.savefig('new intensity = 500,fov=100')
+plt.savefig('png/new intensity = 500,fov=100')
 
 # Compare this image to the previous one
-old_fname = 'intensity = 500,fov=100.png'
-new_fname = 'new intensity = 500,fov=100.png'
+old_fname = 'png/intensity = 500,fov=100.png'
+new_fname = 'png/new intensity = 500,fov=100.png'
 
 compare_images(old_fname, new_fname)
 
@@ -537,7 +537,7 @@ compare_images(old_fname, new_fname)
 # In[8]:
 
 
-# scene = mi.load_file("./real_geometry_int1000fov100.xml")
+# scene = mi.load_file("./xml/real_geometry_int1000fov100.xml")
 # original_image = mi.render(scene)
 
 # Set up the scene description
@@ -721,11 +721,11 @@ plt.figure(figsize = (20,20))
 plt.axis('off')
 plt.imshow(original_image ** (1.0 / 2.2)); 
 print("new intensity = 1000, fov=100")
-plt.savefig('new intensity = 1000,fov=100')
+plt.savefig('png/new intensity = 1000,fov=100')
 
 # Compare this image to the previous one
-old_fname = 'intensity = 1000,fov=100.png'
-new_fname = 'new intensity = 1000,fov=100.png'
+old_fname = 'png/intensity = 1000,fov=100.png'
+new_fname = 'png/new intensity = 1000,fov=100.png'
 
 compare_images(old_fname, new_fname)
 
@@ -733,7 +733,7 @@ compare_images(old_fname, new_fname)
 # In[9]:
 
 
-# scene = mi.load_file("./real_geometry_int5000.xml")
+# scene = mi.load_file("./xml/real_geometry_int5000.xml")
 # original_image = mi.render(scene)
 
 # Set up the scene description
@@ -917,11 +917,11 @@ plt.figure(figsize = (20,20))
 plt.axis('off')
 plt.imshow(original_image ** (1.0 / 2.2)); 
 print("new intensity = 5000")
-plt.savefig('new intensity = 5000')
+plt.savefig('png/new intensity = 5000')
 
 # Compare this image to the previous one
-old_fname = 'intensity = 5000.png'
-new_fname = 'new intensity = 5000.png'
+old_fname = 'png/intensity = 5000.png'
+new_fname = 'png/new intensity = 5000.png'
 
 compare_images(old_fname, new_fname)
 
@@ -929,7 +929,7 @@ compare_images(old_fname, new_fname)
 # In[10]:
 
 
-# scene = mi.load_file("./real_geometry_int10000.xml")
+# scene = mi.load_file("./xml/real_geometry_int10000.xml")
 # original_image = mi.render(scene)
 
 # Set up the scene description
@@ -1113,11 +1113,11 @@ plt.figure(figsize = (20,20))
 plt.axis('off')
 plt.imshow(original_image ** (1.0 / 2.2)); 
 print("new intensity = 10000")
-plt.savefig('new intensity = 10000')
+plt.savefig('png/new intensity = 10000')
 
 # Compare this image to the previous one
-old_fname = 'intensity = 10000.png'
-new_fname = 'new intensity = 10000.png'
+old_fname = 'png/intensity = 10000.png'
+new_fname = 'png/new intensity = 10000.png'
 
 compare_images(old_fname, new_fname)
 
@@ -1125,7 +1125,7 @@ compare_images(old_fname, new_fname)
 # In[11]:
 
 
-# scene = mi.load_file("./real_geometry_int15000.xml")
+# scene = mi.load_file("./xml/real_geometry_int15000.xml")
 # original_image = mi.render(scene)
 
 # Set up the scene description
@@ -1309,11 +1309,11 @@ plt.figure(figsize = (20,20))
 plt.axis('off')
 plt.imshow(original_image ** (1.0 / 2.2)); 
 print("new intensity = 15000")
-plt.savefig('new intensity = 15000')
+plt.savefig('png/new intensity = 15000')
 
 # Compare this image to the previous one
-old_fname = 'intensity = 15000.png'
-new_fname = 'new intensity = 15000.png'
+old_fname = 'png/intensity = 15000.png'
+new_fname = 'png/new intensity = 15000.png'
 
 compare_images(old_fname, new_fname)
 
@@ -1321,7 +1321,7 @@ compare_images(old_fname, new_fname)
 # In[12]:
 
 
-# scene = mi.load_file("./real_geometry_int20000.xml")
+# scene = mi.load_file("./xml/real_geometry_int20000.xml")
 # original_image = mi.render(scene)
 
 # Set up the scene description
@@ -1505,11 +1505,11 @@ plt.figure(figsize = (20,20))
 plt.axis('off')
 plt.imshow(original_image ** (1.0 / 2.2)); 
 print("new intensity = 20000")
-plt.savefig('new intensity = 20000')
+plt.savefig('png/new intensity = 20000')
 
 # Compare this image to the previous one
-old_fname = 'intensity = 20000.png'
-new_fname = 'new intensity = 20000.png'
+old_fname = 'png/intensity = 20000.png'
+new_fname = 'png/new intensity = 20000.png'
 
 compare_images(old_fname, new_fname)
 
@@ -1517,7 +1517,7 @@ compare_images(old_fname, new_fname)
 # In[13]:
 
 
-# scene = mi.load_file("./real_geometry_int2000000.xml")
+# scene = mi.load_file("./xml/real_geometry_int2000000.xml")
 # original_image = mi.render(scene)
 
 # Set up the scene description
@@ -1701,11 +1701,11 @@ plt.figure(figsize = (20,20))
 plt.axis('off')
 plt.imshow(original_image ** (1.0 / 2.2)); 
 print("new intensity = 2000000")
-plt.savefig('new intensity = 2000000')
+plt.savefig('png/new intensity = 2000000')
 
 # Compare this image to the previous one
-old_fname = 'intensity = 2000000.png'
-new_fname = 'new intensity = 2000000.png'
+old_fname = 'png/intensity = 2000000.png'
+new_fname = 'png/new intensity = 2000000.png'
 
 compare_images(old_fname, new_fname)
 
@@ -1715,7 +1715,7 @@ compare_images(old_fname, new_fname)
 
 # # mi.set_variant('cuda_mono')
 # mi.set_variant('llvm_mono')
-# scene = mi.load_file("./real_geometry_emittorightwall.xml")
+# scene = mi.load_file("./xml/real_geometry_emittorightwall.xml")
 # original_image = mi.render(scene)
 
 # Set up the scene description
@@ -1905,8 +1905,8 @@ plt.imshow(original_image ** (1.0 / 2.2));
 plt.savefig('new emit to the right wall')
 
 # Compare this image to the previous one
-old_fname = 'emit to the right wall.png'
-new_fname = 'new emit to the right wall.png'
+old_fname = 'png/emit to the right wall.png'
+new_fname = 'png/new emit to the right wall.png'
 
 compare_images(old_fname, new_fname)
 
@@ -1917,8 +1917,8 @@ compare_images(old_fname, new_fname)
 # Check the one where the diff looks weird to see if it's actually 500 not 1000
 
 # Compare this image to the previous one
-old_fname = 'intensity = 1000,fov=100.png'
-new_fname = 'new intensity = 500,fov=100.png'
+old_fname = 'png/intensity = 1000,fov=100.png'
+new_fname = 'png/new intensity = 500,fov=100.png'
 
 compare_images(old_fname, new_fname)
 
