@@ -1,0 +1,141 @@
+<scene version="3.0.2">
+	<default name="spp" value="1" />
+	<default name="resy" value="1024" />
+	<default name="resx" value="1024" />
+	<default name="max_depth" value="50" />
+	<integrator type="ptracer_c">
+		<integer name="max_depth" value="$max_depth" />
+		<boolean name="hide_emitters" value="false" />
+	</integrator>
+	
+	<sensor type="perspective">
+		<float name="fov" value="40" />
+
+		<transform name="to_world">
+			<!-- <lookat origin="6000, 1100 ,792" target="0, 1500, 1000" up="0, 0, 1" /> -->
+			<!-- Look at the right wall -->
+			<!-- <lookat origin="0, 2700 ,300" target="0, 3000, 300" up="0, 0, 1" /> -->
+			
+			<lookat origin="0, 1100 ,950" target="0, 1500, 1500" up="0, 0, 1" />
+		</transform>
+		<sampler type="independent">
+			<integer name="sample_count" value="$spp" />
+		</sampler>
+
+		<film type="hdrfilm">
+			<integer name="width" value="$resx" />
+			<integer name="height" value="$resy" />
+			<string name="file_format" value="openexr" />
+			<string name="pixel_format" value="luminance" />
+			
+			<string name="component_format" value="uint32" />
+			<rfilter type="tent" />
+		</film>
+	</sensor>
+
+	<bsdf type="twosided" id="MirrorBSDF">
+		<bsdf type="conductor">
+			<string name="material" value="none" />
+		</bsdf>
+	</bsdf>
+
+	<bsdf type="twosided" id="RoughMirrorBSDF">
+		<bsdf type="roughconductor">
+			<string name="material" value="none" />
+			<spectrum name="alpha" value="0.01" />
+		</bsdf>
+	</bsdf>
+
+	<bsdf type="twosided" id="test">
+		<bsdf type="diffuse">
+			<rgb name="reflectance" value="1, 1, 1" />
+		</bsdf>
+	</bsdf>
+
+	<bsdf type="twosided" id="test2">
+		<bsdf type="diffuse">
+			<rgb name="reflectance" value="0.9, 0.5, 0.2" />
+		</bsdf>
+	</bsdf>   
+
+    <shape type="cube" id="mirror_spherical">
+		<transform name="to_world">
+            <scale x="1500" y="650" z="33" />
+            
+       		<lookat origin="0,2000,355" target="0,1000,600 " up="0, 0, 1" />
+		</transform>
+		<ref id="MirrorBSDF" />
+	</shape>
+
+    <shape type="rectangle" id="mirror_flat">
+		<transform name="to_world">
+            <scale x="740" y="440" z="0.1" />
+       		<lookat origin="0,1000,710" target="0, 2000,900 " up="0, 0, 1" />
+		</transform>
+		<ref id="MirrorBSDF" />
+	</shape>
+
+	
+	<shape type="rectangle" id="detector">
+		<transform name="to_world">
+            <scale x="1000" y="500" z="0.5" />
+			<lookat origin="0, 1500, 1120" target="0,1000,710" up="0, 0, 1" />
+		</transform>
+		<ref id="test" />	
+    </shape>
+
+	 <shape type="rectangle" id="backwall">
+		<transform name="to_world">
+			<scale x="3000" y="3000" />
+			<lookat origin="-1000,1500,500" target="0, 1500, 500" up="0, 1, 0" />
+		</transform>
+        <bsdf type="diffuse">
+            <rgb name="reflectance" value="0.4, 1, 0.2" />
+        </bsdf>
+	</shape>
+
+	<shape type="rectangle" id="ceiling">
+		<transform name="to_world">
+			<scale x="3000" y="3000" />
+			<lookat origin="0,1500,3000" target="0, 1500, 0" up="0, 1, 0" />
+		</transform>
+        <bsdf type="diffuse">
+            <rgb name="reflectance" value="0.8, 0.3, 0.45" />
+        </bsdf>
+	</shape>
+
+	<shape type="rectangle" id="leftwall">
+		<transform name="to_world">
+			<scale x="3000" y="3000" z="3000" />
+			<lookat origin="0,0,500" target="0, 1500, 500" up="0, 0, 1" />
+		</transform>
+        <bsdf type="diffuse">
+            <rgb name="reflectance" value="0.32, 0.46, 0.23" />
+        </bsdf>
+	</shape>
+
+	<shape type="rectangle" id="rightwall">
+		<transform name="to_world">
+			<scale x="3000" y="3000" z="3000" />
+			<lookat origin="0,3000,500" target="0, 1500, 500" up="0, 0, 1" />
+		</transform>
+        <bsdf type="diffuse">
+            <rgb name="reflectance" value="0.92, 0.58, 1" />
+        </bsdf>
+	</shape>
+
+	<shape type="rectangle" id="floor">
+		<transform name="to_world">
+			<scale x="3000" y="3000" z="3000" />
+			<lookat origin="0,1500,-1000" target="0, 1500, 3000" up="0, 1, 0" />
+		</transform>
+        <bsdf type="diffuse">
+            <rgb name="reflectance" value="0.56, 0.23, 0.54" />
+        </bsdf>
+	</shape>
+    <emitter type="photon_emitter" id="pE1">
+		<string name="filename" value="photon_geometry.bin"/>
+        <rgb name="intensity" value="20000.0"/>
+    </emitter>
+
+</scene> 
