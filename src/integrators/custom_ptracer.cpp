@@ -405,3 +405,4 @@ public:
 MI_IMPLEMENT_CLASS_VARIANT(ParticleTracerIntegrator, AdjointIntegrator);
 MI_EXPORT_PLUGIN(ParticleTracerIntegrator, "Particle Tracer integrator");
 NAMESPACE_END(mitsuba)
+
