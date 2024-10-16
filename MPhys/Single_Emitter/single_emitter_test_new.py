@@ -328,7 +328,7 @@ def compare_images(old_fname, new_fname):
     ax3.imshow(diff_image - np.min(diff_image))
     
     print("diff image")
-    plt.savefig('diff image' + old_fname[4:-4])
+    plt.savefig('png/diff image' + old_fname[4:-4])
 
 # Compare this image to the previous one
 old_fname = 'png/intensity = 1000.png'
