@@ -13,14 +13,19 @@ import random
 import matplotlib.pyplot as plt
 
 # Tell user to supply mitsuba variant if they haven't
-if len(sys.argv) == 1:
-    sys.exit("Please supply a (command-line) mitsuba variant e.g. llvm_mono, cuda_mono, etc.")
+if len(sys.argv) != 3:
+    sys.exit("Usage: python single_emitter_test_new_change_nphotons.py variant n_repeats \n"
+             "(where n_repeats is the number of times the csv data file is repeated)")
 
 mi.set_variant(sys.argv[1])
+# The number of repeats my local machine can cope with (using 16GB RAM) is somewhere around 20
+# In order to get to 10^8 photons then n_repeats needs to be approximately 108 
+# (but you can check when running as to how many photons this gives you in the long run)
+n_repeats = int(sys.argv[2])
 # mi.set_variant('cuda_mono')
 # mi.set_variant('llvm_mono')
 # mi.set_variant('llvm_ad_rgb')
-print(mi.variant())
+print(f"{mi.variant()} with {n_repeats} repeats")
 mi.variants()
 
 # First section is only necessary to run if the photon_detected CSV file does not yet exist ?
@@ -89,10 +94,6 @@ mi.variants()
 photon_detected_load = pd.read_csv('csv/test_new_photons_detected_spectral.csv', index_col=0) #, names = column_names)
 # photon_detected_load.reset_index(drop=True, inplace=True)
 # The number of photons actually in this file is somewhere just under 10^6
-# The number of repeats my local machine can cope with (using 16GB RAM) is somewhere around 20
-# In order to get to 10^8 then n_repeats needs to be approximately 108 
-# (but you can check when running as to how many photons this gives you in the long run)
-n_repeats = 20
 photon_detected = pd.concat([photon_detected_load for _ in range(n_repeats)], ignore_index=True)
 
 print(photon_detected_load)
