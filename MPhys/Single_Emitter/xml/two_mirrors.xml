@@ -1,0 +1,204 @@
+<scene version="3.0.1">
+	<default name="integrator" value="path" />
+	<default name="spp" value="1" />
+	<default name="resy" value="1024" />
+	<default name="resx" value="1024" />
+	<default name="max_depth" value="60" />
+	<integrator type="ptracer_c">
+		<integer name="max_depth" value="$max_depth"/>
+		<integer name="rr_depth" value="$max_depth"/>
+		<boolean name="hide_emitters" value="false"/>
+		<!-- <integer name="samples_per_pass" value="64"/> -->
+	</integrator>
+	<!-- <integrator type="path"/> -->
+	<sensor type="perspective">
+		<float name="fov" value="90" />
+
+		<transform name="to_world">
+            <!-- <lookat origin="0, 0 ,7" target="1, 0, 8" up="0, 0, 1"/> -->
+
+            <!--look at the detector directly-->
+            <!-- <lookat origin="0,-10,0" target="0,0,0" up="0, 0, 1"/> -->
+
+            <!--See the whole experiment scene-->
+			
+            <lookat origin="2, 0, 0" target="3, 0, 0" up="0, 0, 1"/>
+		</transform>
+		<sampler type="independent">
+			<integer name="sample_count" value="$spp" />
+		</sampler>
+		<film type="hdrfilm">
+			<integer name="width" value="$resx" />
+			<integer name="height" value="$resy" />
+			<string name="file_format" value="openexr" />
+			<string name="pixel_format" value="rgb" />
+			<!-- <string name="pixel_format" value="xyz" /> -->
+			<string name="component_format" value="uint32" />
+			<rfilter type="tent" />
+		</film>
+	</sensor>
+    <!-- <emitter type="photon_emitter" id="pE2">
+        <transform name="to_world">
+       		<lookat origin="0,-1,0" target="2.9, 0, 0" up="0, 0, 0"/>
+   		</transform>
+        <rgb name="intensity" value="20000.0"/>
+    </emitter> -->
+    <emitter type="photon_emitter" id="pE1">
+		<string name="filename" value="bintxt/emitters.txt"/>
+        <rgb name="intensity" value="20000.0"/>
+    </emitter>
+
+
+
+	<!-- <emitter type="photon_emitter" id="pE3">
+        <transform name="to_world">
+       		<lookat origin="0,-1,0" target="3.2, 0, 0" up="0, 0, 0"/>
+   		</transform>
+        <rgb name="intensity" value="20000.0"/>
+    </emitter> -->
+
+	<!-- <emitter type="photon_emitter" id="pE4">
+        <transform name="to_world">
+       		<lookat origin="0,-1,0" target="3.15, 0, 0" up="0, 0, 0"/>
+   		</transform>
+        <rgb name="intensity" value="20000.0"/>
+    </emitter> -->
+
+    <!-- <emitter type="spot" id="sp2">
+        <transform name="to_world">
+       		<lookat origin="0,-1,0" target="3.1, 0, 0" up="0, 0, 0"/>
+   		</transform>
+        <rgb name="intensity" value="2000.0"/>
+		<float name="cutoff_angle" value="1"/>
+    </emitter> -->
+
+	<!-- Constant light to debug-->
+ 	<!-- <emitter type='constant' id='cs1'>
+        <rgb name='radiance' value='1'/>
+    </emitter> -->
+
+	<bsdf type="twosided" id="MirrorBSDF">
+		<bsdf type="conductor">
+			<string name="material" value="none" />
+		</bsdf>
+	</bsdf>
+
+	<bsdf type="twosided" id="RoughMirrorBSDF">
+		<bsdf type="roughconductor">
+			<string name="material" value="none" />
+			<spectrum name="alpha" value="0.01"/>
+		</bsdf>
+	</bsdf>
+
+	<!-- A pink cube to simulate emitter-->
+    <!-- <shape type="cube" id="simulate emitter">
+		<transform name="to_world">
+            <scale x="0.2" y="0.2" z="0.2"/>
+       		<lookat origin="-3,0,-6" target="3, 0, 0" up="0, 0, 1"/>
+		</transform>
+        <bsdf type="diffuse">
+            <rgb name="reflectance" value="0.86, 0.45, 0.919" />
+        </bsdf>
+	</shape> -->
+
+
+     <!-- <shape type="rectangle" id="simulate mirror">
+		<transform name="to_world">
+			<lookat origin="3,0,0" target="0, 0, 0" up="0, 0, 1"/>
+		</transform>
+        <bsdf type="diffuse">
+            <rgb name="reflectance" value="0, 0, 0" />
+        </bsdf>
+	</shape> -->
+
+	<!-- The first cube-->
+    <!-- <shape type="rectangle" id="mirror01">
+		<transform name="to_world">
+			<lookat origin="3,0,0" target="0, 0, 0" up="0, 0, 1"/>
+		</transform>
+		<ref id="MirrorBSDF" />
+	</shape> -->
+
+	<!-- Try to import obj model which made from blender but it can't absorb any light. Strange.-->
+	<!-- <shape type="obj" id="mirror">
+		<string name="filename" value="MitsubaMphys/curve_mirror_C.obj" />
+		<transform name="to_world">
+			<scale x="4" y="4"/>
+			<lookat origin="3,0,4" target="0, 0, 4" up="0, 0, 1"/>
+		</transform>
+		<ref id="MirrorBSDF" />
+	</shape> -->
+
+    <!-- <shape type="rectangle" id="mirror02">
+		<transform name="to_world">
+			<lookat origin="-2,0,5" target="0,0,5" up="0, 0, 1"/>
+		</transform>
+		<ref id="MirrorBSDF" />
+    </shape> -->
+
+	<!-- A white detector which can tell the output easily-->
+	<shape type="rectangle" id="detector">
+		<transform name="to_world">
+			<lookat origin="3,0,0" target="0,0,0" up="0, 0, 1"/>
+		</transform>
+        <bsdf type="diffuse">
+            <rgb name="reflectance" value="1, 1, 1" />
+        </bsdf>		
+    </shape>
+<!-- 
+	 <shape type="rectangle" id="backwall">
+		<transform name="to_world">
+			<scale x="10" y="10" z="10"/>
+			<lookat origin="0,5,0" target="0, 0, 0" up="0, 0, 1"/>
+		</transform>
+        <bsdf type="diffuse">
+            <rgb name="reflectance" value="0.4, 1, 0.2" />
+        </bsdf>
+	</shape>
+
+	<shape type="rectangle" id="ceiling">
+		<transform name="to_world">
+			<scale x="10" y="10" z="10"/>
+			<lookat origin="0,0,10" target="0, 0, 0" up="0, 1, 0"/>
+		</transform>
+        <bsdf type="diffuse">
+            <rgb name="reflectance" value="0.8, 0.3, 0.45" />
+        </bsdf>
+	</shape>
+
+	<shape type="rectangle" id="leftwall">
+		<transform name="to_world">
+			<scale x="10" y="10" z="10"/>
+			<lookat origin="-10,0,0" target="0, 0, 0" up="0, 0, 1"/>
+		</transform>
+        <bsdf type="diffuse">
+            <rgb name="reflectance" value="0.32, 0.46, 0.23" />
+        </bsdf>
+	</shape>
+
+	<shape type="rectangle" id="rightwall">
+		<transform name="to_world">
+			<scale x="10" y="10" z="10"/>
+			<lookat origin="10,0,0" target="0, 0, 0" up="0, 0, 1"/>
+		</transform>
+        <bsdf type="diffuse">
+            <rgb name="reflectance" value="0.92, 0.58, 1" />
+        </bsdf>
+	</shape>
+
+	<shape type="rectangle" id="floor">
+		<transform name="to_world">
+			<scale x="10" y="10" z="10"/>
+			<lookat origin="0,0,-10" target="0, 0, 0" up="0, 1, 0"/>
+		</transform>
+        <bsdf type="diffuse">
+            <rgb name="reflectance" value="0.56, 0.23, 0.54" />
+        </bsdf>
+	</shape> -->
+
+</scene>
+<!-- <emitter type="photon_emitter">
+	<transform name="to_world">
+		<lookat origin="-0.137233, 1138.75, 113.807" target="-0.1615802, 1139.739264, 113.951098" up="0,1,0" />
+	</transform><rgb name="intensity" value="200000000.0" />
+</emitter> -->

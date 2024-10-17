@@ -108,7 +108,7 @@ public:
 
         if (m_intensity->is_spatially_varying())
             Throw("The parameter 'intensity' cannot be spatially varying (e.g. bitmap type)!");
-        dr::set_attr(this, "flags", m_flags);
+        // dr::set_attr(this, "flags", m_flags);
         // degree to radiance: degree * pi / 180
         m_cutoff_angle = dr::deg_to_rad(0.01f);
         m_beam_width   = dr::deg_to_rad(0.01f*3.0f / 4.0f);
@@ -181,7 +181,7 @@ public:
         si.p                         = ds.p;
         UnpolarizedSpectrum radiance = m_intensity->eval(si, active);
 
-        return { ds, depolarizer<Spectrum>(radiance & active) * (falloff * dr::sqr(inv_dist))};
+        return { ds, depolarizer<Spectrum>(radiance & active) * (falloff * dr::square(inv_dist))};
     }
 
     Float pdf_direction(const Interaction3f &,
