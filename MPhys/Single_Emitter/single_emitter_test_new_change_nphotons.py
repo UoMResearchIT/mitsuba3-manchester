@@ -417,6 +417,7 @@ plt.plot([tn[0] for tn in timing_vs_nphotons], [tn[3] for tn in timing_vs_nphoto
 plt.plot([tn[0] for tn in timing_vs_nphotons], [tn[2]-tn[1] for tn in timing_vs_nphotons], label='render')
 plt.legend()
 plt.xscale('log')
+plt.yscale('log')
 plt.ylabel('time (s)')
 plt.xlabel('Number of photons')
 plt.title('timing vs n_photons, mitsuba3 single photon emitter (' + mi.variant() + ')')
