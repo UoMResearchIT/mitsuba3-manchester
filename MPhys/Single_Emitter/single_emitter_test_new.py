@@ -72,7 +72,7 @@ print ("{0:.4} of emitted photon in G4 are actually detected.".format(fraction_d
 # In[3]:
 
 
-# scene = mi.load_file("./two_mirrors.xml")
+# scene = mi.load_file("./xml/two_mirrors.xml")
 # original_image = mi.render(scene)
 # import matplotlib.pyplot as plt
 # plt.figure(figsize = (20,20))
@@ -1930,7 +1930,7 @@ compare_images(old_fname, new_fname)
 
 # # mi.set_variant('cuda_mono')
 # mi.set_variant('llvm_mono')
-# scene = mi.load_file("./real_geometry.xml")  # assume this is the intensity=20000 that real_geometry.xml is saved with
+# scene = mi.load_file("./xml/real_geometry.xml")  # assume this is the intensity=20000 that real_geometry.xml is saved with
 # original_image = mi.render(scene)
 # import matplotlib.pyplot as plt
 # plt.figure(figsize = (20,20))

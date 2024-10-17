@@ -16,7 +16,7 @@ variants = ["llvm_mono", "llvm_ad_rgb", "cuda_mono", "cuda_ad_rgb"]
 
 timing_data = []
 for variant in variants:
-    data = np.loadtxt("cluster_new_"+variant+"_tests/"+variant+"_timing_for_n_photons.csv", delimiter=",")
+    data = np.loadtxt("csv/"+variant+"_timing_for_n_photons.csv", delimiter=",")
     timing_data.append([variant, data])
 
 print(timing_data)

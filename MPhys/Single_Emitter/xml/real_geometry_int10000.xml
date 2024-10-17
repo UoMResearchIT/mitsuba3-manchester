@@ -134,7 +134,7 @@
         </bsdf>
 	</shape>
     <emitter type="photon_emitter_old" id="pE1">
-		<string name="filename" value="test_photon_geometry.bin"/>
+		<string name="filename" value="test_bintxt/photon_geometry.bin"/>
         <rgb name="intensity" value="10000.0"/>
     </emitter>
 
