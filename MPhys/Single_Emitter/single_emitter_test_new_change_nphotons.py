@@ -1,16 +1,18 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[1]:
-
 import sys
-import drjit as dr
 import mitsuba as mi
 import time
 import pandas as pd
 import numpy as np
-import random
+import matplotlib
 import matplotlib.pyplot as plt
+
+# Use agg backend for matplotlib since we're just writing to files
+# Note: in WSL2 with python3-tk installed, allowing matplotlib to select automatically
+#       (I assume it picks 'TkAgg' in this instance) causes a segmentation fault!
+matplotlib.use('agg')
 
 # Tell user to supply mitsuba variant if they haven't
 if len(sys.argv) != 3:
@@ -31,10 +33,6 @@ mi.variants()
 # First section is only necessary to run if the photon_detected CSV file does not yet exist ?
 
 # nm_per_ev_constant = (float(6.6260715e-34)*float(3.00e8)*float(1e9))/(float(1.6021e-19)*float(1e6))
-
-
-# # In[2]:
-
 
 # #Values for linear interpolation.
 # wavelength_steps = [100, 200, 230, 270, 300, 330, 370, 400, 430, 470, 500, 530, 570, 600, 630, 670, 700, 1000]
@@ -83,10 +81,6 @@ mi.variants()
 # print (photon_detected)
 # print ("{0:.4} of emitted photon ({1} of {2}) in G4 are actually detected.".format(
 #     fraction_detected, final_number_of_photons, initial_number_of_photons))
-
-
-
-# In[4]:
 
 # Load in the CSV file
 # column_names = ["time (ps)", "x", "y", "z", "px", "py", "pz", "E (MeV)"]
@@ -148,8 +142,6 @@ print (np.array(photon_list))
 print (gen_photon_data)
 
 print ("n_photons into mitsuba ", (len(np.array(photon_list)[0][0]) - 1) // 6)
-
-# In[5]:
 
 # sleep before experiments, just to see if first experiment is being affected by start?
 print("sleeping...")
@@ -355,8 +347,6 @@ def run_experiment(photon_list):
 
     return (n_photons, load_time, load_and_render_time, elapsed_time)
 
-# In[6]:
-
 def compare_images(old_fname, new_fname):
     old_image = plt.imread(old_fname)
     new_image = plt.imread(new_fname)
@@ -381,22 +371,16 @@ def compare_images(old_fname, new_fname):
     plt.close(fig)
 
 # Loop to run experiments and compare to old images
-timing_vs_nphotons = []
+full_timing_vs_nphotons = []
 
 for photon_list in photon_lists:
-    # Run the experiments multiple times, and take a time average
+    # Run the experiments multiple times (take averages in plotting script)
     n_exps = 11
-    load = 0
-    render = 0
-    elapsed = 0
     for n in range(n_exps):
         (n_photons, load_time, load_and_render_time, elapsed_time) = run_experiment(photon_list)
+        # The first run is often longer than any other, so don't count it
         if n!=0:
-            load += load_time
-            render += load_and_render_time
-            elapsed += elapsed_time
-
-    timing_vs_nphotons.append([n_photons, load/(n_exps-1), render/(n_exps-1), elapsed/(n_exps-1)])
+            full_timing_vs_nphotons.append([n_photons, load_time, load_and_render_time - load_time, load_and_render_time, elapsed_time])
 
     # Compare this image to the previous one
     old_fname = 'png/intensity = 1000.png'
@@ -405,26 +389,22 @@ for photon_list in photon_lists:
     compare_images(old_fname, new_fname)
 
 print("-------- timings --------")
-for n in range(len(timing_vs_nphotons)):
-    print(timing_vs_nphotons[n])
+for n in range(len(full_timing_vs_nphotons)):
+    print(full_timing_vs_nphotons[n])
 
-# Save timing data to a CSV file
-np.savetxt('csv/' + mi.variant()+'_timing_for_n_photons.csv', np.array(timing_vs_nphotons), delimiter=',')
+# Save timing data to CSV files
+np.savetxt('csv/' + mi.variant()+'_full_timing_for_n_photons.csv', np.array(full_timing_vs_nphotons), delimiter=',')
 
-fig = plt.figure()
-plt.plot([tn[0] for tn in timing_vs_nphotons], [tn[1] for tn in timing_vs_nphotons], label='load')
-plt.plot([tn[0] for tn in timing_vs_nphotons], [tn[2] for tn in timing_vs_nphotons], label='load and render')
-plt.plot([tn[0] for tn in timing_vs_nphotons], [tn[3] for tn in timing_vs_nphotons], label='full elapsed')
-plt.plot([tn[0] for tn in timing_vs_nphotons], [tn[2]-tn[1] for tn in timing_vs_nphotons], label='render')
-plt.legend()
-plt.xscale('log')
-plt.yscale('log')
-plt.ylabel('time (s)')
-plt.xlabel('Number of photons')
-plt.title('timing vs n_photons, mitsuba3 single photon emitter (' + mi.variant() + ')')
-plt.savefig('png/' + mi.variant()+'_timing_for_n_photons')
-plt.close(fig)
-
-
-
-# In[7]:
+# fig = plt.figure()
+# plt.plot([tn[0] for tn in average_timing_vs_nphotons], [tn[1] for tn in average_timing_vs_nphotons], label='load')
+# plt.plot([tn[0] for tn in average_timing_vs_nphotons], [tn[2] for tn in average_timing_vs_nphotons], label='load and render')
+# plt.plot([tn[0] for tn in average_timing_vs_nphotons], [tn[3] for tn in average_timing_vs_nphotons], label='full elapsed')
+# plt.plot([tn[0] for tn in average_timing_vs_nphotons], [tn[2]-tn[1] for tn in average_timing_vs_nphotons], label='render')
+# plt.legend()
+# plt.xscale('log')
+# plt.yscale('log')
+# plt.ylabel('time (s)')
+# plt.xlabel('Number of photons')
+# plt.title('timing vs n_photons, mitsuba3 single photon emitter (' + mi.variant() + ')')
+# plt.savefig('png/' + mi.variant()+'_timing_for_n_photons')
+# plt.close(fig)
