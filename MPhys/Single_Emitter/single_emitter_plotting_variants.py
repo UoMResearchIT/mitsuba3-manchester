@@ -5,7 +5,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 # Load in data from different mitsuba variant tests
-variants = ["llvm_mono", "llvm_ad_rgb", "cuda_mono", "cuda_ad_rgb"]
+variants = ["llvm_mono", "llvm_ad_rgb"] #, "cuda_mono", "cuda_ad_rgb"]
 
 max_time = 0
 timing_data = []
@@ -13,7 +13,7 @@ timing_full_data = []
 for variant in variants:
     full_data = np.loadtxt("csv/"+variant+"_full_timing_for_n_photons.csv", delimiter=",")
     data = np.loadtxt("csv/"+variant+"_stats_timing_for_n_photons.csv", delimiter=",")
-    max_full = np.max([d[7] for d in data])
+    max_full = np.max([d[9] for d in data])
     if max_full > max_time:
         max_time = max_full
     timing_data.append([variant, data])
@@ -22,7 +22,7 @@ for variant in variants:
 print(timing_data)
 
 # Plot each variant for each column 
-columns = ["load", "render", "load_and_render", "full_time"]
+columns = ["create_dict", "load", "render", "load_and_render", "full_time"]
 
 for n_col, column in enumerate(columns):
     fig = plt.figure()
@@ -34,12 +34,12 @@ for n_col, column in enumerate(columns):
         timing_vs_nphotons_dict = {}
 
         for t_data in full_variant_data:
-            [n_photons, load_time, render_time, load_and_render_time, elapsed_time] = t_data
+            [n_photons, create_dict_time, load_time, render_time, load_and_render_time, elapsed_time] = t_data
             timing_vs_nphotons_dict[n_photons] = []
 
         for t_data in full_variant_data:
-            [n_photons, load_time, render_time, load_and_render_time, elapsed_time] = t_data
-            timing_vs_nphotons_dict[n_photons].append([load_time, render_time, load_and_render_time, elapsed_time])
+            [n_photons, create_dict_time, load_time, render_time, load_and_render_time, elapsed_time] = t_data
+            timing_vs_nphotons_dict[n_photons].append([create_dict_time, load_time, render_time, load_and_render_time, elapsed_time])
 
         data = []
         for key in timing_vs_nphotons_dict.keys():
@@ -50,7 +50,7 @@ for n_col, column in enumerate(columns):
 
     plt.legend()
     plt.xlim(1e-1, 1e9)
-    plt.ylim(1e-3, max_time+(0.5*max_time))
+    plt.ylim(1e-5, max_time+(0.5*max_time))
     plt.xscale('log')
     plt.yscale('log')
     plt.ylabel('time (s)')

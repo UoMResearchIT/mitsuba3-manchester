@@ -324,28 +324,43 @@ def run_experiment(photon_list):
         },        
     }
     
+    # Timing for dictionary creation
+    create_dict_mark = time.time()
+    create_dict_time = create_dict_mark - start_time
+    print(f"Create dict time: {create_dict_time:.3f} seconds")
+
     scene = mi.load_dict(scene_description)
-    # print(scene)
-    load_time = time.time() - start_time
-    print(f"Load time: {load_time:.2f} seconds")
+
+    # Timing for loading
+    load_time_mark = time.time()
+    load_time = load_time_mark - create_dict_mark
+    print(f"Load time: {load_time:.3f} seconds")
     
     original_image = mi.render(scene)
-    load_and_render_time = time.time() - start_time
-    print(f"Load / render time: {load_and_render_time:.2f} seconds")
+
+    # Timing for render
+    render_time_mark = time.time()
+    render_time = render_time_mark - load_time_mark
+
+    print(f"Render time: {render_time:.2f} seconds")
+    print(f"Load / render time: {load_time+render_time:.3f} seconds")
     # print(original_image)
     fig = plt.figure(figsize = (20,20))
     plt.axis('off')
     plt.imshow(original_image ** (1.0 / 2.2)); 
+
+    # Full timing
     end_time = time.time()
     elapsed_time = end_time - start_time
-    print(f"Full elapsed time: {elapsed_time:.2f} seconds")
-    # there are 6 columns in each of the lists so divide by this to get the number of photons
+    print(f"Full elapsed time: {elapsed_time:.3f} seconds")
+    
+    # There are 6 columns in each of the lists so divide by this to get the number of photons
     n_photons = (len(np.array(photon_list)[0][0]) - 1) // 6
     print(mi.variant(), "intensity = 1000, n photons = ", n_photons)
     plt.savefig('png/' + mi.variant() + ' new intensity = 1000, n photons = ' + str(n_photons))
     plt.close(fig)
 
-    return (n_photons, load_time, load_and_render_time, elapsed_time)
+    return (n_photons, create_dict_time, load_time, render_time, elapsed_time)
 
 def compare_images(old_fname, new_fname):
     old_image = plt.imread(old_fname)
@@ -377,10 +392,10 @@ for photon_list in photon_lists:
     # Run the experiments multiple times (take averages in plotting script)
     n_exps = 11
     for n in range(n_exps):
-        (n_photons, load_time, load_and_render_time, elapsed_time) = run_experiment(photon_list)
+        (n_photons, create_dict_time, load_time, render_time, elapsed_time) = run_experiment(photon_list)
         # The first run is often longer than any other, so don't count it
         if n!=0:
-            full_timing_vs_nphotons.append([n_photons, load_time, load_and_render_time - load_time, load_and_render_time, elapsed_time])
+            full_timing_vs_nphotons.append([n_photons, create_dict_time, load_time, render_time, load_time + render_time, elapsed_time])
 
     # Compare this image to the previous one
     old_fname = 'png/intensity = 1000.png'
