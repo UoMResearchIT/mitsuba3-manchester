@@ -1,8 +1,11 @@
 #!/usr/bin/env python
 # coding: utf-8
 
+# import cProfile, pstats
+import yep
 import sys
 import mitsuba as mi
+import drjit as dr
 import time
 import pandas as pd
 import numpy as np
@@ -15,20 +18,29 @@ import matplotlib.pyplot as plt
 matplotlib.use('agg')
 
 # Tell user to supply mitsuba variant if they haven't
-if len(sys.argv) != 3:
-    sys.exit("Usage: python single_emitter_test_new_change_nphotons.py variant n_repeats \n"
-             "(where n_repeats is the number of times the csv data file is repeated)")
+if len(sys.argv) != 4 or not(sys.argv[3] == "dict" or sys.argv[3] == "xml"):
+    sys.exit("Usage: python single_emitter_test_new_change_nphotons.py variant n_repeats load_method \n"
+             "variant: the Mitsuba variant to be used in the run\n"
+             "n_repeats: the number of times the csv data file is repeated\n"
+             "load_method: dict or xml")
+
+# NOTE: the xml loading method currently doesn't work with the "new" photon_emitter, so the xml method
+#       would currently need to use photon_emitter_old.  This needs editing so that there is one photon_emitter
+#       implementation that allows for both xml and python dict object input
 
 mi.set_variant(sys.argv[1])
 # The number of repeats my local machine can cope with (using 16GB RAM) is somewhere around 20
 # In order to get to 10^8 photons then n_repeats needs to be approximately 108 
 # (but you can check when running as to how many photons this gives you in the long run)
 n_repeats = int(sys.argv[2])
+load_method = str(sys.argv[3])
 # mi.set_variant('cuda_mono')
 # mi.set_variant('llvm_mono')
 # mi.set_variant('llvm_ad_rgb')
 print(f"{mi.variant()} with {n_repeats} repeats")
 mi.variants()
+# Set the log level to output information from drjit, to see what's happening with kernel creation
+dr.set_log_level(dr.LogLevel.Info)  # "Info" is the usual suggested level, "Debug" and "Trace" give too much information
 
 # First section is only necessary to run if the photon_detected CSV file does not yet exist ?
 
@@ -147,189 +159,213 @@ print ("n_photons into mitsuba ", (len(np.array(photon_list)[0][0]) - 1) // 6)
 print("sleeping...")
 time.sleep(10)
 
+# Helper function to change format of stats display
+def f8_helper(x):
+    return "%9.5f" % x
+
 
 def run_experiment(photon_list):
-    
+
+    # there are 6 columns in each of the lists so divide by this to get the number of photons
+    n_photons = (len(np.array(photon_list)[0][0]) - 1) // 6
+
+    # photon_list.write("photons.vol")
     start_time = time.time()
-    # scene = mi.load_file("./xml/real_geometry_int10000.xml")
     
-    # Set up the scene description
-    scene_description = {
-        'type': 'scene',
-    
-        'integrator': {
-            'type': 'ptracer_c',  # ptracer?
-            'max_depth': 50,
-            'hide_emitters': False,
-        },
-    
-        'sensor': {
-            'type': 'perspective',
-            'fov': 40,
-            'to_world': mi.ScalarTransform4f().look_at(origin=[0, 1100, 950],
-                                                     target=[0, 1500, 1500],
-                                                     up=[0, 0, 1]),
-            'sampler': {
-                'type': 'independent',
-                'sample_count': 1,
+    scene = None
+    if load_method == "dict":
+        # Set up the scene description
+        scene_description = {
+            'type': 'scene',
+        
+            'integrator': {
+                'type': 'ptracer_c',  # ptracer?
+                'max_depth': 50,
+                'hide_emitters': False,
             },
-            'film': {
-                'type': 'hdrfilm',
-                'width': 1024,
-                'height': 1024,
-                'file_format': 'openexr',
-                'pixel_format': 'luminance',
-                'component_format': 'uint32',
-                'filter': {
-                    'type': 'tent',
+        
+            'sensor': {
+                'type': 'perspective',
+                'fov': 40,
+                'to_world': mi.ScalarTransform4f().look_at(origin=[0, 1100, 950],
+                                                        target=[0, 1500, 1500],
+                                                        up=[0, 0, 1]),
+                'sampler': {
+                    'type': 'independent',
+                    'sample_count': 1,
                 },
-            },      
-        },
-    
-        'MirrorBSDF': {
-            'type': 'twosided',
-            'bsdf_id': {
-                'type': 'conductor',
-                'material': 'none',
+                'film': {
+                    'type': 'hdrfilm',
+                    'width': 1024,
+                    'height': 1024,
+                    'file_format': 'openexr',
+                    'pixel_format': 'luminance',
+                    'component_format': 'uint32',
+                    'filter': {
+                        'type': 'tent',
+                    },
+                },      
             },
-        },
-    
-        # 'RoughMirrorBSDF': {
-        #     'type': 'conductor',
-        #     'material': 'none',
-        #     'alpha': 0.01,
-        # },
-    
-        'test': {
-            'type': 'twosided',
-            'bsdf_id': {
-                'type': 'diffuse',
-                'reflectance': {
-                    'type': 'rgb',
-                    'value': [1, 1, 1],
+        
+            'MirrorBSDF': {
+                'type': 'twosided',
+                'bsdf_id': {
+                    'type': 'conductor',
+                    'material': 'none',
                 },
             },
-        },
-    
-        'test2': {
-            'type': 'twosided',
-            'bsdf_id': {
-                'type': 'diffuse',
-                'reflectance': {
-                    'type': 'rgb',
-                    'value': [0.9, 0.5, 0.2],
+        
+            # 'RoughMirrorBSDF': {
+            #     'type': 'conductor',
+            #     'material': 'none',
+            #     'alpha': 0.01,
+            # },
+        
+            'test': {
+                'type': 'twosided',
+                'bsdf_id': {
+                    'type': 'diffuse',
+                    'reflectance': {
+                        'type': 'rgb',
+                        'value': [1, 1, 1],
+                    },
                 },
             },
-        },
-    
-        'spherical_mirror': {
-            'type': 'cube',
-            'to_world': mi.ScalarTransform4f().look_at(
-                origin=[0, 2000, 355], target=[0, 1000, 600], up=[0, 0, 1]).scale([1500, 650, 33]),
-            'bsdf_id': {
-                'type': 'ref',
-                'id': 'MirrorBSDF',
+        
+            'test2': {
+                'type': 'twosided',
+                'bsdf_id': {
+                    'type': 'diffuse',
+                    'reflectance': {
+                        'type': 'rgb',
+                        'value': [0.9, 0.5, 0.2],
+                    },
+                },
             },
-        },
-    
-        'flat_mirror': {
-            'type': 'rectangle',
-            'to_world': mi.ScalarTransform4f().look_at(
-                origin=[0, 1000, 710], target=[0, 2000, 900], up=[0, 0, 1]).scale([740, 440, 0.1]),
-            'bsdf_id': {
-                'type': 'ref',
-                'id': 'MirrorBSDF',
+        
+            'spherical_mirror': {
+                'type': 'cube',
+                'to_world': mi.ScalarTransform4f().look_at(
+                    origin=[0, 2000, 355], target=[0, 1000, 600], up=[0, 0, 1]).scale([1500, 650, 33]),
+                'bsdf_id': {
+                    'type': 'ref',
+                    'id': 'MirrorBSDF',
+                },
             },
-        },
-    
-        'detector': {
-            'type': 'rectangle',
-            'to_world': mi.ScalarTransform4f().look_at(
-                origin=[0, 1500, 1120], target=[0, 1000, 710], up=[0, 0, 1]).scale([1000, 500, 0.5]),
-            'bsdf_id': {
-                'type': 'ref',
-                'id': 'test',
-            },        
-        },
-    
-        'backwall': {
-            'type': 'rectangle',
-            'to_world': mi.ScalarTransform4f().look_at(
-                origin=[-1000, 1500, 500], target=[0, 1500, 500], up=[0, 1, 0]).scale([3000, 3000, 1]),
-            'bsdf_id': {
-                'type': 'diffuse',
-                'reflectance': {
-                    'type': 'rgb',
-                    'value': [0.4, 1, 0.2],
+        
+            'flat_mirror': {
+                'type': 'rectangle',
+                'to_world': mi.ScalarTransform4f().look_at(
+                    origin=[0, 1000, 710], target=[0, 2000, 900], up=[0, 0, 1]).scale([740, 440, 0.1]),
+                'bsdf_id': {
+                    'type': 'ref',
+                    'id': 'MirrorBSDF',
                 },
+            },
+        
+            'detector': {
+                'type': 'rectangle',
+                'to_world': mi.ScalarTransform4f().look_at(
+                    origin=[0, 1500, 1120], target=[0, 1000, 710], up=[0, 0, 1]).scale([1000, 500, 0.5]),
+                'bsdf_id': {
+                    'type': 'ref',
+                    'id': 'test',
+                },        
+            },
+        
+            'backwall': {
+                'type': 'rectangle',
+                'to_world': mi.ScalarTransform4f().look_at(
+                    origin=[-1000, 1500, 500], target=[0, 1500, 500], up=[0, 1, 0]).scale([3000, 3000, 1]),
+                'bsdf_id': {
+                    'type': 'diffuse',
+                    'reflectance': {
+                        'type': 'rgb',
+                        'value': [0.4, 1, 0.2],
+                    },
+                },        
+            },
+                
+            'ceiling': {
+                'type': 'rectangle',
+                'to_world': mi.ScalarTransform4f().look_at(
+                    origin=[0, 1500, 3000], target=[0, 1500, 0], up=[0, 1, 0]).scale([3000, 3000, 1]),
+                'bsdf_id': {
+                    'type': 'diffuse',
+                    'reflectance': {
+                        'type': 'rgb',
+                        'value': [0.8, 0.3, 0.45],
+                    },
+                },        
+            },
+                
+            'leftwall': {
+                'type': 'rectangle',
+                'to_world': mi.ScalarTransform4f().look_at(
+                    origin=[0, 0, 500], target=[0, 1500, 500], up=[0, 0, 1]).scale([3000, 3000, 3000]),
+                'bsdf_id': {
+                    'type': 'diffuse',
+                    'reflectance': {
+                        'type': 'rgb',
+                        'value': [0.32, 0.46, 0.23],
+                    },
+                },        
+            },
+                
+            'rightwall': {
+                'type': 'rectangle',
+                'to_world': mi.ScalarTransform4f().look_at(
+                    origin=[0, 3000, 500], target=[0, 1500, 500], up=[0, 0, 1]).scale([3000, 3000, 3000]),
+                'bsdf_id': {
+                    'type': 'diffuse',
+                    'reflectance': {
+                        'type': 'rgb',
+                        'value': [0.92, 0.58, 1],
+                    },
+                },        
+            },
+        
+            'floor': {
+                'type': 'rectangle',
+                'to_world': mi.ScalarTransform4f().look_at(
+                    origin=[0, 1500, -1000], target=[0, 1500, 3000], up=[0, 1, 0]).scale([3000, 3000, 3000]),
+                'bsdf_id': {
+                    'type': 'diffuse',
+                    'reflectance': {
+                        'type': 'rgb',
+                        'value': [0.56, 0.23, 0.54],
+                    },
+                },        
+            },
+        
+            'photons': {
+                'type': 'photon_emitter',
+                'photon_list': photon_list,
+                'intensity': 1000.0,
             },        
-        },
-            
-        'ceiling': {
-            'type': 'rectangle',
-            'to_world': mi.ScalarTransform4f().look_at(
-                origin=[0, 1500, 3000], target=[0, 1500, 0], up=[0, 1, 0]).scale([3000, 3000, 1]),
-            'bsdf_id': {
-                'type': 'diffuse',
-                'reflectance': {
-                    'type': 'rgb',
-                    'value': [0.8, 0.3, 0.45],
-                },
-            },        
-        },
-            
-        'leftwall': {
-            'type': 'rectangle',
-            'to_world': mi.ScalarTransform4f().look_at(
-                origin=[0, 0, 500], target=[0, 1500, 500], up=[0, 0, 1]).scale([3000, 3000, 3000]),
-            'bsdf_id': {
-                'type': 'diffuse',
-                'reflectance': {
-                    'type': 'rgb',
-                    'value': [0.32, 0.46, 0.23],
-                },
-            },        
-        },
-            
-        'rightwall': {
-            'type': 'rectangle',
-            'to_world': mi.ScalarTransform4f().look_at(
-                origin=[0, 3000, 500], target=[0, 1500, 500], up=[0, 0, 1]).scale([3000, 3000, 3000]),
-            'bsdf_id': {
-                'type': 'diffuse',
-                'reflectance': {
-                    'type': 'rgb',
-                    'value': [0.92, 0.58, 1],
-                },
-            },        
-        },
-    
-        'floor': {
-            'type': 'rectangle',
-            'to_world': mi.ScalarTransform4f().look_at(
-                origin=[0, 1500, -1000], target=[0, 1500, 3000], up=[0, 1, 0]).scale([3000, 3000, 3000]),
-            'bsdf_id': {
-                'type': 'diffuse',
-                'reflectance': {
-                    'type': 'rgb',
-                    'value': [0.56, 0.23, 0.54],
-                },
-            },        
-        },
-    
-        'photons': {
-            'type': 'photon_emitter',
-            'photon_list': photon_list,
-            'intensity': 1000.0,
-        },        
-    }
-    
-    scene = mi.load_dict(scene_description)
+        }
+        
+        scene = mi.load_dict(scene_description)
+    elif load_method == "xml":
+        scene = mi.load_file("./xml/real_geometry_int1000_new_photon_emitter.xml")
+    else:
+        print("Unknown loading method (should have complained already)")
+
     # print(scene)
     load_time = time.time() - start_time
     print(f"Load time: {load_time:.2f} seconds")
-    
+    # original_image = None
+    # original_image = cProfile.Profile().runctx("mi.render", globals={"mi": mi}, locals={"scene": scene})    
+    # pr = cProfile.Profile()
+    # pr.enable()
+    yep.start("profiling/output_"+str(n_photons)+"_"+str(start_time)+".prof")
     original_image = mi.render(scene)
+    yep.stop()
+    # pr.disable()
+    # pstats.f8 = f8_helper
+    # ps = pstats.Stats(pr, stream=sys.stdout)
+    # ps.sort_stats('tottime')
+    # ps.print_stats()
     load_and_render_time = time.time() - start_time
     print(f"Load / render time: {load_and_render_time:.2f} seconds")
     # print(original_image)
@@ -339,11 +375,19 @@ def run_experiment(photon_list):
     end_time = time.time()
     elapsed_time = end_time - start_time
     print(f"Full elapsed time: {elapsed_time:.2f} seconds")
-    # there are 6 columns in each of the lists so divide by this to get the number of photons
-    n_photons = (len(np.array(photon_list)[0][0]) - 1) // 6
+    print("---- save to file ----")
+    # print("--- dr.whos() ---")
+    # dr.whos()
+    # print("--- dr.whos_ad() ---")
+    # dr.whos_ad()
     print(mi.variant(), "intensity = 1000, n photons = ", n_photons)
     plt.savefig('png/' + mi.variant() + ' new intensity = 1000, n photons = ' + str(n_photons))
     plt.close(fig)
+
+    # Might be sensible to clean up mitsuba instance, if that's possible?
+    # The profiling I'm looking at suggests that elements of a previous instance get saved or cached
+    # between runs, so this isn't working the way we would want it to for the sake of timing
+    # mi.re
 
     return (n_photons, load_time, load_and_render_time, elapsed_time)
 
@@ -387,6 +431,8 @@ for photon_list in photon_lists:
     new_fname = 'png/' + mi.variant() + ' new intensity = 1000, n photons = '+str((len(np.array(photon_list)[0][0]) - 1) // 6)+'.png'
 
     compare_images(old_fname, new_fname)
+
+    print("------------------------------------------------------------------")
 
 print("-------- timings --------")
 for n in range(len(full_timing_vs_nphotons)):
