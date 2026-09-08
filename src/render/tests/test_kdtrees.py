@@ -8,6 +8,8 @@ from mitsuba.scalar_rgb.test.util import fresolver_append_path
 def create_stairs(num_steps):
     size_step = 1.0 / num_steps
 
+    m = mi.Mesh("stairs", 4 * num_steps, 4 * num_steps - 2)
+
     v = dr.zeros(mi.TensorXf, [4 * num_steps, 3])
     f = dr.zeros(mi.TensorXf, [4 * num_steps - 2, 3])
 
@@ -28,12 +30,12 @@ def create_stairs(num_steps):
             f[k + 2] = [k + 2, k + 3, k + 5]
             f[k + 3] = [k + 5, k + 4, k + 2]
 
-    import numpy as np
-    mesh = mi.Mesh("stairs")
-    mesh.from_fields(
-        faces=mi.TensorXu(f.numpy().astype(np.uint32)),
-        positions=mi.TensorXf(v.numpy().astype(np.float32)))
-    return mesh
+    params = mi.traverse(m)
+    params['vertex_positions'] = v.array
+    params['faces'] = f.array
+    params.update()
+
+    return m
 
 def make_synthetic_scene(n_steps):
     props = mi.Properties("scene")

@@ -5,12 +5,11 @@
 NAMESPACE_BEGIN(mitsuba)
 
 /**
- * Basic cross-platform abstraction for memory mapped files
+ * \brief Basic cross-platform abstraction for memory mapped files
  *
- * Note:
- *     The Python API has one additional constructor
- *     ``MemoryMappedFile(filename, array)``, which creates a new
- *     file, maps it into memory, and copies the array contents.
+ * \remark The Python API has one additional constructor
+ * <tt>MemoryMappedFile(filename, array)<tt>, which creates a new
+ * file, maps it into memory, and copies the array contents.
  */
 class MI_EXPORT_LIB MemoryMappedFile : public Object {
 public:
@@ -33,10 +32,10 @@ public:
     size_t size() const;
 
     /**
-     * Resize the memory-mapped file
+     * \brief Resize the memory-mapped file
      *
      * This involves remapping the file, which will
-     * generally change the pointer obtained via `data()`
+     * generally change the pointer obtained via data()
      */
     void resize(size_t size);
 
@@ -50,13 +49,12 @@ public:
     std::string to_string() const override;
 
     /**
-     * Create a temporary memory-mapped file
+     * \brief Create a temporary memory-mapped file
      *
-     * Note:
-     *     When closing the mapping, the file is automatically deleted.
-     *     Mitsuba additionally informs the OS that any outstanding changes
-     *     that haven't yet been written to disk can be discarded
-     *     (Linux/OSX only).
+     * \remark When closing the mapping, the file is automatically deleted.
+     *         Mitsuba additionally informs the OS that any outstanding changes
+     *         that haven't yet been written to disk can be discarded
+     *         (Linux/OSX only).
      */
     static ref<MemoryMappedFile> create_temporary(size_t size);
 

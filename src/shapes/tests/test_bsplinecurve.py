@@ -99,8 +99,7 @@ def test05_ray_intersect(variant_scalar_rgb):
                     ray = mi.Ray3f(o=[x, y, -10], d=[0, 0, 1],
                                 time=0.0, wavelengths=[])
 
-                    si = s.ray_intersect(
-                        ray, mi.RayFlags.Default | mi.RayFlags.NormalPartials, True)
+                    si = s.ray_intersect(ray, mi.RayFlags.All | mi.RayFlags.dNSdUV, True)
                     ray_u = mi.Ray3f(ray)
                     ray_v = mi.Ray3f(ray)
                     eps = 1e-4
@@ -170,7 +169,7 @@ def test07_differentiable_surface_interaction_ray_forward_follow_shape(variant_l
     )
     params.update()
     pi = scene.ray_intersect_preliminary(ray)
-    si = pi.compute_surface_interaction(ray, mi.RayFlags.Default | mi.RayFlags.DetachShape)
+    si = pi.compute_surface_interaction(ray, mi.RayFlags.All | mi.RayFlags.DetachShape)
 
     dr.forward(theta)
 
@@ -194,7 +193,7 @@ def test07_differentiable_surface_interaction_ray_forward_follow_shape(variant_l
     params.update()
 
     pi = scene.ray_intersect_preliminary(ray)
-    si = pi.compute_surface_interaction(ray, mi.RayFlags.Default)
+    si = pi.compute_surface_interaction(ray, mi.RayFlags.All)
 
     dr.forward(theta)
 
@@ -218,7 +217,7 @@ def test07_differentiable_surface_interaction_ray_forward_follow_shape(variant_l
     params.update()
 
     pi = scene.ray_intersect_preliminary(ray)
-    si = pi.compute_surface_interaction(ray, mi.RayFlags.Default | mi.RayFlags.FollowShape)
+    si = pi.compute_surface_interaction(ray, mi.RayFlags.All | mi.RayFlags.FollowShape)
 
     dr.forward(theta)
 
@@ -244,7 +243,7 @@ def test08_eval_parameterization(variants_vec_rgb):
     ray = mi.Ray3f(mi.Vector3f(x, y, 2), mi.Vector3f(0, 0, -1))
 
     pi = scene.ray_intersect_preliminary(ray)
-    si = pi.compute_surface_interaction(ray, mi.RayFlags.Default | mi.RayFlags.DetachShape)
+    si = pi.compute_surface_interaction(ray, mi.RayFlags.All | mi.RayFlags.DetachShape)
 
     curve = scene.shapes()[0]
     eval_param_si = curve.eval_parameterization(si.uv, active=si.is_valid())

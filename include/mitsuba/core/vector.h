@@ -8,7 +8,7 @@
 NAMESPACE_BEGIN(mitsuba)
 
 // =======================================================================
-// Elementary vector, point, and normal data types
+//! @{ \name Elementary vector, point, and normal data types
 // =======================================================================
 
 template <typename Value_, size_t Size_>
@@ -77,10 +77,11 @@ auto operator+(const Point<T1, S1> &p1, const Vector<T2, S2> &v2) {
     return p1 + Point<T2, S2>(v2);
 }
 
+//! @}
 // =======================================================================
 
 // =======================================================================
-// Masking support for vector, point, and normal data types
+//! @{ \name Masking support for vector, point, and normal data types
 // =======================================================================
 
 template <typename Value_, size_t Size_>
@@ -110,6 +111,7 @@ struct Normal<dr::detail::MaskedArray<Value_>, Size_>
     Normal(const Base &b) : Base(b) { }
 };
 
+//! @}
 // =======================================================================
 
 /// Complete the set {a} to an orthonormal basis {a, b, c}
@@ -118,10 +120,10 @@ template <typename Vector3f> std::pair<Vector3f, Vector3f> coordinate_system(con
 
     using Float = dr::value_t<Vector3f>;
 
-    // Based on "Building an Orthonormal Basis, Revisited" by
-    // Tom Duff, James Burgess, Per Christensen,
-    // Christophe Hery, Andrew Kensler, Max Liani,
-    // and Ryusuke Villemin (JCGT Vol 6, No 1, 2017)
+    /* Based on "Building an Orthonormal Basis, Revisited" by
+       Tom Duff, James Burgess, Per Christensen,
+       Christophe Hery, Andrew Kensler, Max Liani,
+       and Ryusuke Villemin (JCGT Vol 6, No 1, 2017) */
 
     Float sign = dr::sign(n.z()),
           a    = -dr::rcp(sign + n.z()),
@@ -136,13 +138,12 @@ template <typename Vector3f> std::pair<Vector3f, Vector3f> coordinate_system(con
 }
 
 /**
- * Converts a unit vector to its spherical coordinates parameterization
+ * \brief Converts a unit vector to its spherical coordinates parameterization
  *
- * Args:
- *     v: Vector to convert
- *
- * Returns:
- *     The polar and azimuthal angles respectively.
+ * \param v
+ *      Vector to convert
+ * \return
+ *      The polar and azimuthal angles respectively.
  */
 template <typename Value>
 MI_INLINE Point<Value, 2> dir_to_sph(const Vector<Value, 3> &v) {
@@ -150,15 +151,14 @@ MI_INLINE Point<Value, 2> dir_to_sph(const Vector<Value, 3> &v) {
 }
 
 /**
- * Converts spherical coordinates to a cartesian vector
+ * \brief Converts spherical coordinates to a cartesian vector
  *
- * Args:
- *     theta: The polar angle
- *
- *     phi: The azimuth angle
- *
- * Returns:
- *     Unit vector corresponding to the input angles
+ * \param theta
+ *      The polar angle
+ * \param phi
+ *      The azimuth angle
+ * \return
+ *      Unit vector corresponding to the input angles
  */
 template <typename Value>
 MI_INLINE Vector<Value, 3> sph_to_dir(const Value &theta, const Value &phi) {

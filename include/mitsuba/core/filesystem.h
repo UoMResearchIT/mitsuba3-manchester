@@ -1,7 +1,7 @@
 #pragma once
 
 /**
- * filesystem helpers to manipulate paths on Linux/Windows/Mac OS
+ * \brief filesystem helpers to manipulate paths on Linux/Windows/Mac OS
  *
  * Follows the C++17 fs interface (see https://en.cppreference.com/w/cpp/experimental/fs).
  * Based on implementations from https://github.com/wjakob/filesystem.
@@ -43,11 +43,10 @@ NAMESPACE_BEGIN(filesystem)
     constexpr value_type preferred_separator = '/';
 #endif
 
-/**
- * Represents a path to a filesystem resource.
+/** \brief Represents a path to a filesystem resource.
  * On construction, the path is parsed and stored in a system-agnostic
  * representation. The path can be converted back to the system-specific string
- * using ``native()`` or ``string()``.
+ * using <tt>native()</tt> or <tt>string()</tt>.
  */
 class MI_EXPORT_LIB path {
 public:
@@ -60,40 +59,34 @@ public:
     /// Move constructor.
     path(path &&path) noexcept = default;
 
-    /**
-     * Construct a path from a string view with native type.
+    /** \brief Construct a path from a string view with native type.
      * On Windows, the path can use both '/' or '\\' as a delimiter.
      */
     path(string_view_type string) { set(string); }
 
-    /**
-     * Construct a path from a string with native type.
+    /** \brief Construct a path from a string with native type.
      * On Windows, the path can use both '/' or '\\' as a delimiter.
      */
     path(const string_type &string) { set(string); }
 
-    /**
-     * Construct a path from a native C-style string.
+    /** \brief Construct a path from a native C-style string.
      * On Windows, this accepts wide strings (wchar_t*).
      * On other platforms, this accepts regular strings (char*).
      */
     path(const value_type *string) { set(string); }
 
 #if defined(_WIN32)
-    /**
-     * Constructs a path from an std::string,_view even if it's not the
+    /** \brief Constructs a path from an std::string,_view even if it's not the
      * native string type. Assumes the string is UTF-8 encoded.
      */
     path(std::string_view string) { set(string); }
 
-    /**
-     * Constructs a path from an std::string, even if it's not the
+    /** \brief Constructs a path from an std::string, even if it's not the
      * native string type. Assumes the string is UTF-8 encoded.
      */
     path(const std::string &string) { set(string); }
 
-    /**
-     * Construct a path from a UTF-8 encoded C-style string.
+    /** \brief Construct a path from a UTF-8 encoded C-style string.
      * This constructor is only available on Windows to handle char* strings
      * which are assumed to be UTF-8 encoded.
      */
@@ -115,46 +108,39 @@ public:
     /// Checks if the path is relative.
     bool is_relative() const { return !m_absolute; }
 
-    /**
-     * Returns the path to the parent directory. Returns an empty path
-     * if it is already empty or if it has only one element.
-     */
+    /** \brief Returns the path to the parent directory. Returns an empty path
+     * if it is already empty or if it has only one element. */
     path parent_path() const;
 
-    /**
-     * Returns the extension of the filename component of the path (the
+    /** \brief Returns the extension of the filename component of the path (the
      * substring starting at the rightmost period, including the period).
-     * Special paths ``.`` and ``..`` have an empty extension.
-     */
+     * Special paths '.' and '..' have an empty extension. */
     path extension() const;
 
-    /**
-     * Replaces the substring starting at the rightmost ``.`` symbol
+    /** \brief Replaces the substring starting at the rightmost '.' symbol
      * by the provided string.
      *
-     * A ``.`` symbol is automatically inserted if the replacement does not
-     * start with a dot. Removes the extension altogether if the empty path
-     * is passed. If there is no extension, appends a ``.`` followed by the
-     * replacement. If the path is empty, ``.`` or ``..``, the method does
-     * nothing.
+     * A '.' symbol is automatically inserted if the replacement does not start
+     * with a dot. Removes the extension altogether if the empty path is
+     * passed. If there is no extension, appends a '.' followed by the
+     * replacement. If the path is empty, '.' or '..', the method does nothing.
      *
-     * Returns ``*this``.
+     * Returns *this.
      */
     path& replace_extension(const path &replacement = path());
 
     /// Returns the filename component of the path, including the extension.
     path filename() const;
 
-    /**
-     * Returns the path in the form of a native string, so that it can
+    /** \brief Returns the path in the form of a native string, so that it can
      * be passed directly to system APIs. The path is constructed using the
      * system's preferred separator and the native string type.
      */
     const string_type native() const noexcept { return str(); }
 
     /**
-     * Implicit conversion operator to the basic_string corresponding
-     * to the system's character type. Equivalent to calling ``native()``.
+     * \brief Implicit conversion operator to the basic_string corresponding
+     * to the system's character type. Equivalent to calling <tt>native()</tt>.
      */
     operator string_type() const noexcept { return native(); }
 
@@ -170,28 +156,25 @@ public:
     /// Move assignment operator.
     path& operator=(path &&path);
 
-    /**
-     * Assignment from the system's native string type. Acts similarly
+    /** \brief Assignment from the system's native string type. Acts similarly
      * to the string constructor.
      */
     path& operator=(string_view_type str) { set(str); return *this; }
 
 #if defined(_WIN32)
-    /**
-     * Constructs a path from an std::string, even if it's not the
+    /** \brief Constructs a path from an std::string, even if it's not the
      * native string type. Assumes the string is UTF-8 encoded to carry
      * conversion to native type.
      */
     path& operator=(std::string_view str);
 #endif
 
-    /// Prints the path as it would be returned by ``string()``.
+    /// Prints the path as it would be returned by <tt>string()</tt>.
     MI_EXPORT_LIB friend std::ostream& operator<<(std::ostream &os, const path &path);
 
-    /**
-     * Equality operator. Warning: this only checks for lexicographic equivalence.
+    /** Equality operator. Warning: this only checks for lexicographic equivalence.
      * To check whether two paths point to the same filesystem resource,
-     * use ``equivalent``.
+     * use <tt>equivalent</tt>.
      */
     bool operator==(const path &p) const { return p.m_path == m_path; }
 
@@ -209,10 +192,8 @@ protected:
     void set(std::string_view str);
 #endif
 
-    /**
-     * Splits a string into tokens delimited by any of the characters
-     * passed in ``delim``.
-     */
+    /** \brief Splits a string into tokens delimited by any of the characters
+     * passed in <tt>delim</tt>. */
     static std::vector<string_type> tokenize(string_view_type string,
                                              string_view_type delim);
 
@@ -224,64 +205,54 @@ protected:
 /// Returns the current working directory (equivalent to getcwd)
 extern MI_EXPORT_LIB path current_path();
 
-/**
- * Returns an absolute path to the same location pointed by ``p``.
- *
- * See Also:
- *     `cppreference: std::experimental::filesystem::absolute
- *     <http://en.cppreference.com/w/cpp/experimental/fs/absolute>`__
+/** \brief Returns an absolute path to the same location pointed by <tt>p</tt>,
+ * relative to <tt>base</tt>.
+ * \see http ://en.cppreference.com/w/cpp/experimental/fs/absolute)
  */
 extern MI_EXPORT_LIB path absolute(const path& p);
 
-/// Checks if ``p`` points to a regular file, as opposed to a directory or symlink.
+/// Checks if <tt>p</tt> points to a regular file, as opposed to a directory or symlink.
 extern MI_EXPORT_LIB bool is_regular_file(const path& p) noexcept;
-/// Checks if ``p`` points to a directory.
+/// Checks if <tt>p</tt> points to a directory.
 extern MI_EXPORT_LIB bool is_directory(const path& p) noexcept;
-/// Checks if ``p`` points to an existing filesystem object.
+/// Checks if <tt>p</tt> points to an existing filesystem object.
 extern MI_EXPORT_LIB bool exists(const path& p) noexcept;
-/**
- * Returns the size (in bytes) of a regular file at ``p``.
+/** \brief Returns the size (in bytes) of a regular file at <tt>p</tt>.
  * Attempting to determine the size of a directory (as well as any other file
  * that is not a regular file or a symlink) is treated as an error.
  */
 extern MI_EXPORT_LIB size_t file_size(const path& p);
 
-/**
- * Checks whether two paths refer to the same file system object.
- * Symlinks are followed to determine equivalence. Returns ``False`` if
- * either path does not refer to an existing file or directory.
+/** \brief Checks whether two paths refer to the same file system object.
+ * Both must refer to an existing file or directory.
+ * Symlinks are followed to determine equivalence.
  */
-extern MI_EXPORT_LIB bool equivalent(const path& p1, const path& p2) noexcept;
+extern MI_EXPORT_LIB bool equivalent(const path& p1, const path& p2);
 
-/**
- * Creates a directory at ``p`` as if ``mkdir`` was used.
+/** \brief Creates a directory at <tt>p</tt> as if <tt>mkdir</tt> was used.
  * Returns true if directory creation was successful, false otherwise.
- * If ``p`` already exists and is already a directory, the function
+ * If <tt>p</tt> already exists and is already a directory, the function
  * does nothing (this condition is not treated as an error).
  */
 extern MI_EXPORT_LIB bool create_directory(const path& p) noexcept;
-/**
- * Changes the size of the regular file named by ``p`` as if
- * ``truncate`` was called. If the file was larger than ``target_length``,
+/** \brief Changes the size of the regular file named by <tt>p</tt> as if
+ * <tt>truncate</tt> was called. If the file was larger than <tt>target_length</tt>,
  * the remainder is discarded. The file must exist.
  */
 extern MI_EXPORT_LIB bool resize_file(const path& p, size_t target_length) noexcept;
 
-/**
- * Removes a file or empty directory. Returns true if removal was
+/** \brief Removes a file or empty directory. Returns true if removal was
  * successful, false if there was an error (e.g. the file did not exist).
  */
 extern MI_EXPORT_LIB bool remove(const path& p);
 
 
-/**
- * Renames a file or directory. Returns true if renaming was
+/** \brief Renames a file or directory. Returns true if renaming was
  * successful, false if there was an error (e.g. the file did not exist).
  */
 extern MI_EXPORT_LIB bool rename(const path& src, const path &dst);
 
-/**
- * Copies a file from source to destination. Returns true if copying was
+/** \brief Copies a file from source to destination. Returns true if copying was
  * successful, false if there was an error (e.g. the source file did not exist).
  * Creates intermediate directories if necessary.
  */

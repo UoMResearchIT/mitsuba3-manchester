@@ -11,26 +11,26 @@
 NAMESPACE_BEGIN(mitsuba)
 
 /**
- * Intermediate storage for an image or image sub-region being rendered
+ * \brief Intermediate storage for an image or image sub-region being rendered
  *
  * This class facilitates parallel rendering of images in both scalar and
  * JIT-based variants of Mitsuba.
  *
  * In scalar mode, image blocks represent independent rectangular image regions
  * that are simultaneously processed by worker threads. They are finally merged
- * into a master `ImageBlock` controlled by the `Film` instance via the
- * `put_block()` method. The smaller image blocks can include a border
+ * into a master \ref ImageBlock controlled by the \ref Film instance via the
+ * \ref put_block() method. The smaller image blocks can include a border
  * region storing contributions that are slightly outside of the block, which
  * is required to correctly account for image reconstruction filters.
  *
- * In JIT variants there is only a single `ImageBlock`, whose contents are
+ * In JIT variants there is only a single \ref ImageBlock, whose contents are
  * computed in parallel. A border region is usually not needed in this case.
  *
- * In addition to receiving samples via the `put()` method, the image block
- * can also be queried via the `read()` method, in which case the
+ * In addition to receiving samples via the \ref put() method, the image block
+ * can also be queried via the \ref read() method, in which case the
  * reconstruction filter is used to compute suitable interpolation weights.
- * This feature is useful for differentiable rendering, where one needs to
- * evaluate the reverse-mode derivative of the `put()` method.
+ * This is feature is useful for differentiable rendering, where one needs to
+ * evaluate the reverse-mode derivative of the \ref put() method.
  */
 
 template <typename Float, typename Spectrum>
@@ -42,72 +42,80 @@ public:
     ~ImageBlock();
 
     /**
-     * Construct a zero-initialized image block with the desired shape
+     * \brief Construct a zero-initialized image block with the desired shape
      * and channel count
      *
-     * Args:
-     *     size: Specifies the desired horizontal and vertical block size. This value
-     *         excludes additional border pixels that `ImageBlock` will internally
-     *         add to support image reconstruction filters (if ``border=true``
-     *         and a reconstruction filter is furthermore specified)
+     * \param size
+     *    Specifies the desired horizontal and vertical block size. This value
+     *    excludes additional border pixels that \c ImageBlock will internally
+     *    add to support image reconstruction filters (if <tt>border=true</tt>
+     *    and a reconstruction filter is furthermore specified)
      *
-     *     offset: Specifies the offset in case this block represents sub-region of a
-     *         larger image. Otherwise, this can be set to zero.
+     * \param offset
+     *    Specifies the offset in case this block represents sub-region of a
+     *    larger image. Otherwise, this can be set to zero.
      *
-     *     channel_count: Specifies the desired number of image channels.
+     * \param channel_count
+     *    Specifies the desired number of image channels.
      *
-     *     rfilter: The desired reconstruction filter to be used in `read()` and `put()`.
-     *     A box filter will be used if ``rfilter==nullptr``.
+     * \param rfilter
+     *    The desired reconstruction filter to be used in \ref read() and \ref
+     *    put(). A box filter will be used if when <tt>rfilter==nullptr</tt>.
      *
-     *     border: Should `ImageBlock` add an additional border region around
-     *         the image boundary to capture contributions to neighboring pixels
-     *         caused by a nontrivial (non-box) reconstruction filter? This is
-     *         mainly useful when a larger image is partitioned into smaller blocks
-     *         that are rendered in parallel. Enabled by default in scalar variants.
+     * \param border
+     *    Should \c ImageBlock add an additional border region around around
+     *    the image boundary to capture contributions to neighboring pixels
+     *    caused by a nontrivial (non-box) reconstruction filter? This is
+     *    mainly useful when a larger image is partitioned into smaller blocks
+     *    that are rendered in parallel. Enabled by default in scalar variants.
      *
-     *     normalize: This parameter affects the behavior of `read()` and `put()`.
+     * \param normalize
+     *    This parameter affects the behavior of \ref read() and \ref put().
      *
-     *         If set to ``True``, each call to `put()` explicitly normalizes the
-     *         computed filter weights so that the operation adds a unit amount of
-     *         energy to the image. This is useful for methods like particle tracing
-     *         that invoke `put()` with an arbitrary distribution of image
-     *         positions. Other methods (e.g., path tracing) that uniformly sample
-     *         positions in image space should set this parameter to ``False``, since
-     *         the image block contents will eventually be divided by a dedicated
-     *         channel tracking the accumulated sample weight to remove any
-     *         non-uniformity.
+     *    If set to \c true, each call to \ref put() explicitly normalizes the
+     *    computed filter weights so that the operation adds a unit amount of
+     *    energy to the image. This is useful for methods like particle tracing
+     *    that invoke \ref put() with an arbitrary distribution of image
+     *    positions. Other methods (e.g., path tracing) that uniformly sample
+     *    positions in image space should set this parameter to \c false, since
+     *    the image block contents will eventually be divided by a dedicated
+     *    channel tracking the accumulated sample weight to remove any
+     *    non-uniformity.
      *
-     *         Furthermore, if ``normalize`` is set to ``True``, the `read()`
-     *         operation will normalize the filter weights to compute a convex
-     *         combination of pixel values.
+     *    Furthermore, if \c normalize is set to \c true, the \ref read()
+     *    operation will normalize the filter weights to compute a convex
+     *    combination of pixel values.
      *
-     *         Disabled by default.
+     *    Disabled by default.
      *
-     *     coalesce: This parameter is only relevant for JIT variants, where it subtly
-     *         affects the behavior of the performance-critical `put()` method.
+     * \param coalesce
+     *   This parameter is only relevant for JIT variants, where it subtly
+     *   affects the behavior of the performance-critical \ref put() method.
      *
-     *         In coalesced mode, `put()` conservatively bounds the footprint
-     *         and traverses it in lockstep across the whole wavefront. This causes
-     *         unnecessary atomic memory operations targeting pixels with a zero
-     *         filter weight. At the same time, this greatly reduces thread
-     *         divergence and can lead to significant speedups when `put()`
-     *         writes to pixels in a regular (e.g., scanline) order. Coalesced
-     *         mode is preferable for rendering algorithms like path tracing that
-     *         uniformly generate samples within pixels on the sensor.
+     *   In coalesced mode, \ref put() conservatively bounds the footprint
+     *   and traverses it in lockstep across the whole wavefront. This causes
+     *   unnecessary atomic memory operations targeting pixels with a zero
+     *   filter weight. At the same time, this greatly reduces thread
+     *   divergence and can lead to significant speedups when \ref put()
+     *   writes to pixels in a regular (e.g., scanline) order. Coalesced
+     *   mode is preferable for rendering algorithms like path tracing that
+     *   uniformly generate samples within pixels on the sensor.
      *
-     *         In contrast, non-coalesced mode is preferable when the input positions
-     *         are random and will in any case be subject to thread divergence (e.g.
-     *         in a particle tracer that makes random connections to the sensor).
+     *   In contrast, non-coalesced mode is preferable when the input positions
+     *   are random and will in any case be subject to thread divergence (e.g.
+     *   in a particle tracer that makes random connections to the sensor).
      *
-     *     warn_negative: If set to ``True``, `put()` will warn when writing samples with
-     *         negative components. This test is only enabled in scalar variants by
-     *         default, since checking/error reporting is relatively costly in
-     *         JIT-compiled modes.
+     * \param warn_negative
+     *    If set to \c true, \ref put() will warn when writing samples with
+     *    negative components. This test is only enabled in scalar variants by
+     *    default, since checking/error reporting is relatively costly in
+     *    JIT-compiled modes.
      *
-     *     warn_invalid: If set to ``True``, `put()` will warn when writing samples with
-     *         NaN (not a number) or positive/negative infinity component values.
-     *         This test is only enabled in scalar variants by default, since
-     *         checking/error reporting is relatively costly in JIT-compiled modes.
+     * \param warn_invalid
+     *    If set to \c true, \ref put() will warn when writing samples with
+     *    NaN (not a number) or positive/negative infinity component values.
+     *    This test is only enabled in scalar variants by default, since
+     *    checking/error reporting is relatively costly in JIT-compiled modes.
      */
     ImageBlock(const ScalarVector2u &size,
                const ScalarPoint2i &offset,
@@ -120,13 +128,14 @@ public:
                bool warn_invalid = std::is_scalar_v<Float>);
 
     /**
-     * Construct an image block from an existing image tensor
+     * \brief Construct an image block from an existing image tensor
      *
      * In contrast to the above constructor, this one infers the block size and
-     * channel count from a provided 3D image tensor of shape ``(height,
-     * width, channels)``. It then initializes the image block contents with
+     * channel count from a provided 3D image tensor of shape <tt>(height,
+     * width, channels)</tt>. It then initializes the image block contents with
      * a copy of the tensor. This is useful for differentiable rendering phases
-     * that want to query an existing image using a pixel filter via the `read()` function.
+     * that want to query an existing image using a pixel filter via the \ref
+     * read() function.
      *
      * See the other constructor for an explanation of the parameters.
      */
@@ -143,23 +152,25 @@ public:
     void put_block(const ImageBlock *block);
 
     /**
-     * Accumulate a single sample or a wavefront of samples into the
+     * \brief Accumulate a single sample or a wavefront of samples into the
      * image block.
      *
-     * Args:
-     *     pos: Denotes the sample position in fractional pixel coordinates
+     * \remark This variant of the put() function assumes that the ImageBlock
+     * has a standard layout, namely: \c RGB, potentially \c alpha, and a \c
+     * weight channel. Use the other variant if the channel configuration
+     * deviations from this default.
      *
-     *     wavelengths: Sample wavelengths in nanometers
+     * \param pos
+     *    Denotes the sample position in fractional pixel coordinates
      *
-     *     value: Sample value associated with the specified wavelengths
+     * \param wavelengths
+     *    Sample wavelengths in nanometers
      *
-     *     alpha: Alpha value associated with the sample
+     * \param value
+     *    Sample value associated with the specified wavelengths
      *
-     * Note:
-     *     This variant of the `put()` function assumes that the ImageBlock
-     *     has a standard layout, namely: ``RGB``, potentially ``alpha``,
-     *     and a ``weight`` channel. Use the other variant if the channel
-     *     configuration deviates from this default.
+     * \param alpha
+     *    Alpha value associated with the sample
      */
     void put(const Point2f &pos,
              const Wavelength &wavelengths,
@@ -194,31 +205,33 @@ public:
     }
 
     /**
-     * Accumulate a single sample or a wavefront of samples into
+     * \brief Accumulate a single sample or a wavefront of samples into
      * the image block.
      *
-     * Args:
-     *     pos: Denotes the sample position in fractional pixel coordinates
+     * \param pos
+     *    Denotes the sample position in fractional pixel coordinates
      *
-     *     values: Points to an array of length `channel_count()`, which specifies
-     *         the sample value for each channel.
+     * \param values
+     *    Points to an array of length \ref channel_count(), which specifies
+     *    the sample value for each channel.
      */
     void put(const Point2f &pos, const Float *values, Mask active = true);
 
     /**
-     * Fetch a single sample or a wavefront of samples from the image
+     * \brief Fetch a single sample or a wavefront of samples from the image
      * block.
      *
-     * This function is the opposite of `put()`: instead of performing a
+     * This function is the opposite of \ref put(): instead of performing a
      * weighted accumulation of sample values based on the reconstruction
      * filter, it performs a weighted interpolation using gather operations.
      *
-     * Args:
-     *     pos: Denotes the sample position in fractional pixel coordinates
+     * \param pos
+     *    Denotes the sample position in fractional pixel coordinates
      *
-     *     values: Points to an array of length `channel_count()`, which will
-     *         receive the result of the read operation for each channel. In
-     *         Python, the function returns these values as a list.
+     * \param values
+     *    Points to an array of length \ref channel_count(), which will
+     *    receive the result of the read operation for each channel. In
+     *    Python, the function returns these values as a list.
      */
     void read(const Point2f &pos, Float *values, Mask active = true) const;
 
@@ -226,32 +239,18 @@ public:
     void clear();
 
     // =============================================================
-    // Accessors
+    //! @{ \name Accessors
     // =============================================================
 
-    /**
-     * Set the current block offset.
+    /**\brief Set the current block offset.
      *
      * This corresponds to the offset from the top-left corner of a larger
-     * image (e.g. a `Film`) to the top-left corner of this ImageBlock instance.
+     * image (e.g. a Film) to the top-left corner of this ImageBlock instance.
      */
-    void set_offset(const ScalarPoint2i &offset) {
-        m_offset = offset;
-        update_opaque();
-    }
+    void set_offset(const ScalarPoint2i &offset) { m_offset = offset; }
 
     /// Set the block size. This potentially destroys the block's content.
     void set_size(const ScalarVector2u &size);
-
-    /**
-     * \brief Replace the opaque size/offset used by \ref put() and \ref read()
-     * so that frozen functions do not bake in the geometry (see \ref
-     * Film::launch_params()). The values must match \ref size() and \ref offset().
-     */
-    void set_opaque_geometry(const Vector2u &size, const Point2i &offset) {
-        m_size_o = size;
-        m_offset_o = offset;
-    }
 
     /// Return the current block offset
     const ScalarPoint2i &offset() const { return m_offset; }
@@ -277,10 +276,10 @@ public:
     /// Warn when writing negative sample values?
     bool warn_negative() const { return m_warn_negative; }
 
-    /// Re-normalize filter weights in `put()` and `read()`
+    /// Re-normalize filter weights in \ref put() and \ref read()
     void set_normalize(bool value) { m_normalize = value; }
 
-    /// Re-normalize filter weights in `put()` and `read()`
+    /// Re-normalize filter weights in \ref put() and \ref read()
     bool normalize() const { return m_normalize; }
 
     /// Try to coalesce reads/writes in JIT modes?
@@ -307,6 +306,7 @@ public:
     /// Return the underlying image tensor (const version)
     const TensorXf &tensor() const;
 
+    //! @}
     // =============================================================
 
     std::string to_string() const override;
@@ -317,17 +317,13 @@ protected:
     // Implementation detail to atomically accumulate a value into the image block
     void accum(Float value, UInt32 index, Bool active);
 
-    // Packet variant of `accum()`: atomically accumulates m_channel_count
+    // Packet variant of \ref accum: atomically accumulates m_channel_count
     // consecutive values starting at index * m_channel_count
     void accum_packet(const Float *values, UInt32 index, Bool active);
 
-    // Weighted variant of `accum_packet()` (each value multiplied by ``weight``)
+    // Weighted variant of \ref accum_packet (each value multiplied by \c weight)
     void accum_packet(const Float *values, const Float &weight,
                       UInt32 index, Bool active);
-
-protected:
-    /// Refresh the opaque copies of the block size and offset
-    void update_opaque();
 
 protected:
     ScalarPoint2i m_offset;
@@ -341,11 +337,7 @@ protected:
     bool m_warn_negative;
     bool m_warn_invalid;
 
-    /// Opaque copies of m_offset and m_size used by put() and read()
-    Point2i m_offset_o;
-    Vector2u m_size_o;
-
-    MI_TRAVERSE_CB(Object, m_tensor, m_offset_o, m_size_o)
+    MI_TRAVERSE_CB(Object, m_tensor)
 };
 
 MI_EXTERN_CLASS(ImageBlock)

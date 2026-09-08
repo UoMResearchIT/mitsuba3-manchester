@@ -29,16 +29,14 @@ using ::operator<<;
 NAMESPACE_BEGIN(string)
 
 /**
- * Locale-independent string to floating point conversion analogous
- * to ``std::stof``. (implemented using Daniel Lemire's fast_float library.)
+ * \brief Locale-independent string to floating point conversion analogous
+ * to std::stof. (implemented using Daniel Lemire's fast_float library.)
  *
- * Parses a floating point number in the range ``start``..``end``-1, skipping
- * leading spaces and tabs. The function never accesses characters outside of
- * this range, which makes it safe to use on memory-mapped files.
+ * Parses a floating point number in a (potentially longer) string start..end-1.
+ * The 'endptr' argument (if non-NULL) is used to return a pointer to the
+ * character following the parsed floating point value.
  *
- * The ``endptr`` argument returns a pointer to the character following the
- * parsed value. An unsuccessful conversion returns zero and sets ``*endptr``
- * to ``start``.
+ * Throws an exception if the conversion is unsuccessful.
  */
 template <typename T>
 T parse_float(const char *start, const char *end, char **endptr) noexcept;
@@ -49,8 +47,8 @@ extern template MI_EXPORT_LIB double parse_float<double>(
 
 
 /**
- * Locale-independent string to floating point conversion analogous
- * to ``std::stof``. (implemented using Daniel Lemire's fast_float library.)
+ * \brief Locale-independent string to floating point conversion analogous
+ * to std::stof. (implemented using Daniel Lemire's fast_float library.)
  *
  * Throws an exception if the conversion is unsuccessful, or if the portion of
  * the string following the parsed number contains non-whitespace characters.
@@ -61,10 +59,10 @@ extern template MI_EXPORT_LIB float  stof<float>(std::string_view str);
 extern template MI_EXPORT_LIB double stof<double>(std::string_view str);
 
 /**
- * Locale-independent string to floating point conversion analogous
- * to ``std::strtof``. (implemented using Daniel Lemire's fast_float library.)
+ * \brief Locale-independent string to floating point conversion analogous
+ * to std::strtof. (implemented using Daniel Lemire's fast_float library.)
  *
- * On failure, ``endptr`` is set equal to ``s``.
+ * Throws an exception if the conversion is unsuccessful.
  */
 template <typename T> T strtof(const char *s, char **endptr) {
     return parse_float<T>(s, s + strlen(s), endptr);

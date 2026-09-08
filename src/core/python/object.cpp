@@ -49,8 +49,8 @@ MI_PY_EXPORT(Object) {
             if (!other) {
                 o->set_self_py(po);
             } else {
-                NB_CALL(keep_alive_py)(NB_CTX, po, other);
-                nb::inst_set_state(po, true, false);
+                nb::detail::keep_alive(po, other);
+                nb::detail::nb_inst_set_state(po, true, false);
             }
         }),
         D(Object))
@@ -62,10 +62,10 @@ MI_PY_EXPORT(Object) {
         .def("variant_name", &Object::variant_name, D(Object, variant_name))
         .def("expand", [=](const Object &o) -> nb::list {
             auto result = o.expand();
-            nb::list_builder l(result.size());
+            nb::list l;
             for (auto o2: result)
-                l.put(cast_object(o2.get()));
-            return l.commit();
+                l.append(cast_object(o2.get()));
+            return l;
         }, D(Object, expand))
         .def_method(Object, traverse, "cb"_a)
         .def_method(Object, parameters_changed, "keys"_a = nb::list())

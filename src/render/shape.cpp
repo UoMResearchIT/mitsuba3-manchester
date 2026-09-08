@@ -280,40 +280,58 @@ MI_VARIANT typename Shape<Float, Spectrum>::UnpolarizedSpectrum
 Shape<Float, Spectrum>::eval_attribute(std::string_view name,
                                        const SurfaceInteraction3f & si,
                                        Mask active) const {
-    auto it = m_texture_attributes.find(name);
-    if (it == m_texture_attributes.end())
-        return 0.f; // Attributes that the shape does not carry read as zero
+    const auto& it = m_texture_attributes.find(name);
+    if (it == m_texture_attributes.end()) {
+        if constexpr (dr::is_jit_v<Float>)
+            return 0.f;
+        else
+            Throw("Invalid attribute requested %s.", name);
+    }
 
-    return it->second->eval(si, active);
+    const auto& texture = it->second;
+    return texture->eval(si, active);
 }
 
 MI_VARIANT Float
 Shape<Float, Spectrum>::eval_attribute_1(std::string_view name,
                                          const SurfaceInteraction3f &si,
                                          Mask active) const {
-    auto it = m_texture_attributes.find(name);
-    if (it == m_texture_attributes.end())
-        return 0.f; // Attributes that the shape does not carry read as zero
+    const auto& it = m_texture_attributes.find(name);
+    if (it == m_texture_attributes.end()) {
+        if constexpr (dr::is_jit_v<Float>)
+            return 0.f;
+        else
+            Throw("Invalid attribute requested %s.", name);
+    }
 
-    return it->second->eval_1(si, active);
+    const auto& texture = it->second;
+    return texture->eval_1(si, active);
 }
 
 MI_VARIANT typename Shape<Float, Spectrum>::Color3f
 Shape<Float, Spectrum>::eval_attribute_3(std::string_view name,
                                          const SurfaceInteraction3f &si,
                                          Mask active) const {
-    auto it = m_texture_attributes.find(name);
-    if (it == m_texture_attributes.end())
-        return 0.f; // Attributes that the shape does not carry read as zero
+    const auto& it = m_texture_attributes.find(name);
+    if (it == m_texture_attributes.end()) {
+        if constexpr (dr::is_jit_v<Float>)
+            return 0.f;
+        else
+            Throw("Invalid attribute requested %s.", name);
+    }
 
-    return it->second->eval_3(si, active);
+    const auto& texture = it->second;
+    return texture->eval_3(si, active);
 }
 
 MI_VARIANT typename dr::DynamicArray<Float>
 Shape<Float, Spectrum>::eval_attribute_x(std::string_view /*name*/,
                                          const SurfaceInteraction3f & /*si*/,
                                          Mask /*active*/) const {
-    return 0.f; // Attributes that the shape does not carry read as zero
+    if constexpr (dr::is_jit_v<Float>)
+        return 0.f;
+    else
+        NotImplementedError("eval_attribute_x");
 }
 
 MI_VARIANT Float Shape<Float, Spectrum>::surface_area() const {

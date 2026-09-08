@@ -8,7 +8,7 @@
 NAMESPACE_BEGIN(mitsuba)
 
 /**
- * General-purpose bitmap class with read and write support
+ * \brief General-purpose bitmap class with read and write support
  * for several common file formats.
  *
  * This class handles loading of PNG, JPEG, BMP, TGA, as well as
@@ -26,7 +26,7 @@ public:
 
     /**
      * This enumeration lists all pixel format types supported
-     * by the `Bitmap` class. This both determines the
+     * by the \ref Bitmap class. This both determines the
      * number of channels, and how they should be interpreted
      */
     enum class PixelFormat {
@@ -42,10 +42,10 @@ public:
         /// RGB bitmap + alpha channel
         RGBA,
 
-        /// RGB bitmap + weight (used by `ImageBlock`)
+        /// RGB bitmap + weight (used by \ref ImageBlock)
         RGBW,
 
-        /// RGB bitmap + alpha channel + weight (used by `ImageBlock`)
+        /// RGB bitmap + alpha channel + weight (used by \ref ImageBlock)
         RGBAW,
 
         /// XYZ tristimulus bitmap
@@ -62,96 +62,94 @@ public:
     /// Supported image file formats
     enum class FileFormat {
         /**
-         * Portable network graphics
+         * \brief Portable network graphics
          *
          * The following is supported:
-         *
-         * * Loading and saving of 8/16-bit per component bitmaps for
-         *   all pixel formats (Y, YA, RGB, RGBA)
-         *
-         * * Loading and saving of 1-bit per component mask bitmaps
-         *
-         * * Loading and saving of string-valued metadata fields
+         * <ul>
+         * <li> Loading and saving of 8/16-bit per component bitmaps for
+         *   all pixel formats (Y, YA, RGB, RGBA)</li>
+         * <li> Loading and saving of 1-bit per component mask bitmaps</li>
+         * <li> Loading and saving of string-valued metadata fields</li>
+         * </ul>
          */
         PNG,
 
         /**
-         * OpenEXR high dynamic range file format developed by
+         * \brief OpenEXR high dynamic range file format developed by
          * Industrial Light & Magic (ILM)
          *
          * The following is supported:
+         * <ul>
+         *   <li>Loading and saving of \ref Float16 / \ref Float32/ \ref
+         *   UInt32 bitmaps with all supported RGB/Luminance/Alpha combinations</li>
+         *   <li>Loading and saving of spectral bitmaps</li>
+         *   <li>Loading and saving of XYZ tristimulus bitmaps</li>
+         *   <li>Loading and saving of string-valued metadata fields</li>
+         * </ul>
          *
-         * * Loading and saving of `Float16` / `Float32`/ `UInt32`
-         *   bitmaps with all supported RGB/Luminance/Alpha combinations
-         *
-         * * Loading and saving of spectral bitmaps
-         *
-         * * Loading and saving of XYZ tristimulus bitmaps
-         *
-         * * Loading and saving of string-valued metadata fields
-         *
-         * The following is *not* supported:
-         *
-         * * Saving of tiled images, tile-based read access
-         *
-         * * Display windows that are different than the data window
-         *
-         * * Loading of spectrum-valued bitmaps
+         * The following is <em>not</em> supported:
+         * <ul>
+         *   <li>Saving of tiled images, tile-based read access</li>
+         *   <li>Display windows that are different than the data window</li>
+         *   <li>Loading of spectrum-valued bitmaps</li>
+         * </ul>
          */
         OpenEXR,
 
         /**
-         * RGBE image format by Greg Ward
+         * \brief RGBE image format by Greg Ward
          *
          * The following is supported
-         *
-         * * Loading and saving of `Float32` - based RGB bitmaps
+         * <ul>
+         *   <li>Loading and saving of \ref Float32 - based RGB bitmaps</li>
+         * </ul>
          */
         RGBE,
 
         /**
-         * PFM (Portable Float Map) image format
+         * \brief PFM (Portable Float Map) image format
          *
          * The following is supported
-         *
-         * * Loading and saving of `Float32` - based Luminance or RGB bitmaps
+         * <ul>
+         *   <li>Loading and saving of \ref Float32 - based Luminance or RGB bitmaps</li>
+         * </ul>
          */
         PFM,
 
         /**
-         * PPM (Portable Pixel Map) image format
+         * \brief PPM (Portable Pixel Map) image format
          *
          * The following is supported
-         *
-         * * Loading and saving of ``UInt8`` and ``UInt16`` - based RGB bitmaps
+         * <ul>
+         *   <li>Loading and saving of \ref UInt8 and \ref UInt16 - based RGB bitmaps</li>
+         * </ul>
          */
         PPM,
 
         /**
-         * Joint Photographic Experts Group file format
+         * \brief Joint Photographic Experts Group file format
          *
          * The following is supported:
-         *
-         * * Loading and saving of 8 bit per component RGB and
-         *   luminance bitmaps
+         * <ul><li>
+         * Loading and saving of 8 bit per component RGB and
+         * luminance bitmaps
+         * </li></ul>
          */
         JPEG,
 
         /**
-         * Truevision Advanced Raster Graphics Array file format
+         * \brief Truevision Advanced Raster Graphics Array file format
          *
          * The following is supported:
-         *
-         * * Loading of uncompressed 8-bit RGB/RGBA files
+         * <ul><li>Loading of uncompressed 8-bit RGB/RGBA files</li></ul>
          */
         TGA,
 
         /**
-         * Windows Bitmap file format
+         * \brief Windows Bitmap file format
          *
          * The following is supported:
-         *
-         * * Loading of uncompressed 8-bit luminance and RGBA bitmaps
+         * <ul><li>Loading of uncompressed 8-bit luminance and RGBA bitmaps</li></ul>
          */
         BMP,
 
@@ -159,12 +157,10 @@ public:
         Unknown,
 
         /**
-         * Automatically detect the file format
+         * \brief Automatically detect the file format
          *
-         * .. note::
-         *
-         *    This flag only applies when loading a file. In this case,
-         *    the source stream must support the `Stream.seek()` operation.
+         * Note: this flag only applies when loading a file. In this case,
+         * the source stream must support the ``seek()`` operation.
          */
         Auto
     };
@@ -185,28 +181,36 @@ public:
 
 
     // ======================================================================
-    // Constructors
+    //! @{ \name Constructors
     // ======================================================================
 
     /**
-     * Create a bitmap of the specified type and allocate the necessary
+     * \brief Create a bitmap of the specified type and allocate the necessary
      * amount of memory
      *
-     * Args:
-     *     pixel_format: Specifies the pixel format (e.g. RGBA or Luminance-only)
+     * \param pixel_format
+     *    Specifies the pixel format (e.g. RGBA or Luminance-only)
      *
-     *     component_format: Specifies how the per-pixel components are encoded (e.g. unsigned 8
-     *         bit integers or 32-bit floating point values). The component format
-     *         ``struct_type_v<Float>`` will be translated to the corresponding
-     *         compile-time precision type (`Float32` or `Float64`).
+     * \param component_format
+     *    Specifies how the per-pixel components are encoded (e.g. unsigned 8
+     *    bit integers or 32-bit floating point values). The component format
+     *    struct_type_v<Float> will be translated to the corresponding
+     *    compile-time precision type (Float32 or Float64).
      *
-     *     size: Specifies the horizontal and vertical bitmap size in pixels
+     * \param size
+     *    Specifies the horizontal and vertical bitmap size in pixels
      *
-     *     channel_count: Channel count of the image. This parameter is only required when
-     *         ``pixel_format`` = `PixelFormat.MultiChannel`
+     * \param channel_count
+     *    Channel count of the image. This parameter is only required when
+     *    \c pixel_format = \ref PixelFormat::MultiChannel
      *
-     *     channel_names: Channel names of the image. This parameter is optional, and only used
-     *         when ``pixel_format`` = `PixelFormat.MultiChannel`
+     * \param channel_names
+     *    Channel names of the image. This parameter is optional, and only used
+     *    when \c pixel_format = \ref PixelFormat::MultiChannel
+     *
+     * \param data
+     *    External pointer to the image data. If set to \c nullptr, the
+     *    implementation will allocate memory itself.
      */
     Bitmap(PixelFormat pixel_format,
            sj::Type component_format,
@@ -216,22 +220,24 @@ public:
            uint8_t *data = nullptr);
 
     /**
-     * Load a bitmap from an arbitrary stream data source
+     * \brief Load a bitmap from an arbitrary stream data source
      *
-     * Args:
-     *     stream: Pointer to an arbitrary stream data source
+     * \param stream
+     *    Pointer to an arbitrary stream data source
      *
-     *     format: File format to be read (PNG/EXR/Auto-detect ...)
+     * \param format
+     *    File format to be read (PNG/EXR/Auto-detect ...)
      */
     Bitmap(Stream *stream, FileFormat format = FileFormat::Auto);
 
     /**
-     * Load a bitmap from a given filename
+     * \brief Load a bitmap from a given filename
      *
-     * Args:
-     *     path: Name of the file to be loaded
+     * \param path
+     *    Name of the file to be loaded
      *
-     *     format: File format to be read (PNG/EXR/Auto-detect ...)
+     * \param format
+     *    File format to be read (PNG/EXR/Auto-detect ...)
      */
     Bitmap(const fs::path &path, FileFormat = FileFormat::Auto);
 
@@ -303,50 +309,50 @@ public:
     /// Specify whether the bitmap uses premultiplied alpha
     void set_premultiplied_alpha(bool value);
 
-    /// Return a `Properties` object containing the image metadata
+    /// Return a \ref Properties object containing the image metadata
     Properties &metadata() { return m_metadata; }
 
-    /// Return a `Properties` object containing the image metadata (const version)
+    /// Return a \ref Properties object containing the image metadata (const version)
     const Properties &metadata() const { return m_metadata; }
 
-    /// Set the a `Properties` object containing the image metadata
+    /// Set the a \ref Properties object containing the image metadata
     void set_metadata(const Properties &metadata) { m_metadata = metadata; }
 
     /// Clear the bitmap to zero
     void clear();
 
-    /// Return a `Struct` instance describing the contents of the bitmap (const version)
+    /// Return a \c Struct instance describing the contents of the bitmap (const version)
     const sj::Struct &struct_() const { return m_struct; }
 
-    /// Return a `Struct` instance describing the contents of the bitmap
+    /// Return a \c Struct instance describing the contents of the bitmap
     sj::Struct &struct_() { return m_struct; }
 
     /**
      * Write an encoded form of the bitmap to a stream using the specified file format
      *
-     * Args:
-     *     stream: Target stream that will receive the encoded output
+     * \param stream
+     *    Target stream that will receive the encoded output
      *
-     *     format: Target file format (`FileFormat.OpenEXR`, `FileFormat.PNG`, etc.)
-     *         Detected from the filename by default.
+     * \param format
+     *    Target file format (\ref OpenEXR, \ref PNG, etc.)
+     *    Detected from the filename by default.
      *
-     *     quality: Depending on the file format, this parameter takes on a slightly
-     *         different meaning:
-     *
-     *
-     *         * PNG images: Controls how much libpng will attempt to compress
-     *           the output (with 1 being the lowest and 9 denoting the
-     *           highest compression). The default argument uses the
-     *           compression level 5.
-     *
-     *         * JPEG images: denotes the desired quality (between 0 and 100).
-     *           The default argument (-1) uses the highest quality (100).
-     *
-     *         * OpenEXR images: denotes the quality level of the DWAB
-     *           compressor, with higher values corresponding to a lower quality.
-     *           A value of 45 is recommended as the default for lossy compression.
-     *           The default argument (-1) causes the implementation to switch
-     *           to the lossless PIZ compressor.
+     * \param quality
+     *    Depending on the file format, this parameter takes on a slightly
+     *    different meaning:
+     *    <ul>
+     *        <li>PNG images: Controls how much libpng will attempt to compress
+     *            the output (with 1 being the lowest and 9 denoting the
+     *            highest compression). The default argument uses the
+     *            compression level 5. </li>
+     *        <li>JPEG images: denotes the desired quality (between 0 and 100).
+     *            The default argument (-1) uses the highest quality (100).</li>
+     *        <li>OpenEXR images: denotes the quality level of the DWAB
+     *            compressor, with higher values corresponding to a lower quality.
+     *            A value of 45 is recommended as the default for lossy compression.
+     *            The default argument (-1) causes the implementation to switch
+     *            to the lossless PIZ compressor.</li>
+     *    </ul>
      */
     void write(Stream *stream, FileFormat format = FileFormat::Auto,
                int quality = -1) const;
@@ -354,39 +360,39 @@ public:
     /**
      * Write an encoded form of the bitmap to a file using the specified file format
      *
-     * Args:
-     *     path: Target file path on disk
+     * \param path
+     *    Target file path on disk
      *
-     *     format: Target file format (`FileFormat.OpenEXR`, `FileFormat.PNG`, etc.)
-     *         Detected from the filename by default.
+     * \param format
+     *    Target file format (\ref FileFormat::OpenEXR, \ref FileFormat::PNG, etc.)
+     *    Detected from the filename by default.
      *
-     *     quality: Depending on the file format, this parameter takes on a slightly
-     *         different meaning:
-     *
-     *
-     *         * PNG images: Controls how much libpng will attempt to compress
-     *           the output (with 1 being the lowest and 9 denoting the
-     *           highest compression). The default argument uses the
-     *           compression level 5.
-     *
-     *         * JPEG images: denotes the desired quality (between 0 and 100).
-     *           The default argument (-1) uses the highest quality (100).
-     *
-     *         * OpenEXR images: denotes the quality level of the DWAB
-     *           compressor, with higher values corresponding to a lower quality.
-     *           A value of 45 is recommended as the default for lossy compression.
-     *           The default argument (-1) causes the implementation to switch
-     *           to the lossless PIZ compressor.
+     * \param quality
+     *    Depending on the file format, this parameter takes on a slightly
+     *    different meaning:
+     *    <ul>
+     *        <li>PNG images: Controls how much libpng will attempt to compress
+     *            the output (with 1 being the lowest and 9 denoting the
+     *            highest compression). The default argument uses the
+     *            compression level 5. </li>
+     *        <li>JPEG images: denotes the desired quality (between 0 and 100).
+     *            The default argument (-1) uses the highest quality (100).</li>
+     *        <li>OpenEXR images: denotes the quality level of the DWAB
+     *            compressor, with higher values corresponding to a lower quality.
+     *            A value of 45 is recommended as the default for lossy compression.
+     *            The default argument (-1) causes the implementation to switch
+     *            to the lossless PIZ compressor.</li>
+     *    </ul>
      */
     void write(const fs::path &path, FileFormat format = FileFormat::Auto,
                int quality = -1) const;
 
-    /// Equivalent to `write()`, but executes asynchronously on a different thread
+    /// Equivalent to \ref write(), but executes asynchronously on a different thread
     void write_async(const fs::path &path, FileFormat format = FileFormat::Auto,
                      int quality = -1) const;
 
     /**
-     * Up- or down-sample this image to a different resolution
+     * \brief Up- or down-sample this image to a different resolution
      *
      * Uses the provided reconstruction filter and accounts for the requested
      * horizontal and vertical boundary conditions when looking up data outside
@@ -395,21 +401,25 @@ public:
      * A minimum and maximum image value can be specified to prevent to prevent
      * out-of-range values that are created by the resampling process.
      *
-     * The optional ``temp`` parameter can be used to pass an image of
-     * resolution ``Vector2u(target->width(), this->height())`` to avoid
+     * The optional \c temp parameter can be used to pass an image of
+     * resolution <tt>Vector2u(target->width(), this->height())</tt> to avoid
      * intermediate memory allocations.
      *
-     * Args:
-     *     target: Pre-allocated bitmap of the desired target resolution
+     * \param target
+     *     Pre-allocated bitmap of the desired target resolution
      *
-     *     rfilter: A separable image reconstruction filter (default: 2-lobe Lanczos filter)
+     * \param rfilter
+     *     A separable image reconstruction filter (default: 2-lobe Lanczos filter)
      *
-     *     bc: Horizontal and vertical boundary conditions (default: clamp)
+     * \param bch
+     *     Horizontal and vertical boundary conditions (default: clamp)
      *
-     *     clamp: Filtered image pixels will be clamped to the following
-     *         range. Default: -infinity..infinity (i.e. no clamping is used)
+     * \param clamp
+     *     Filtered image pixels will be clamped to the following
+     *     range. Default: -infinity..infinity (i.e. no clamping is used)
      *
-     *     temp: Optional: image for intermediate computations
+     * \param temp
+     *     Optional: image for intermediate computations
      */
     void resample(
         Bitmap *target, const ReconstructionFilter *rfilter = nullptr,
@@ -421,9 +431,9 @@ public:
         Bitmap *temp = nullptr) const;
 
     /**
-     * Up- or down-sample this image to a different resolution
+     * \brief Up- or down-sample this image to a different resolution
      *
-     * This version is similar to the above `resample()` function -- the
+     * This version is similar to the above \ref resample() function -- the
      * main difference is that it does not work with preallocated bitmaps and
      * takes the desired output resolution as first argument.
      *
@@ -434,15 +444,18 @@ public:
      * A minimum and maximum image value can be specified to prevent to prevent
      * out-of-range values that are created by the resampling process.
      *
-     * Args:
-     *     res: Desired output resolution
+     * \param res
+     *     Desired output resolution
      *
-     *     rfilter: A separable image reconstruction filter (default: 2-lobe Lanczos filter)
+     * \param rfilter
+     *     A separable image reconstruction filter (default: 2-lobe Lanczos filter)
      *
-     *     bc: Horizontal and vertical boundary conditions (default: clamp)
+     * \param bch
+     *     Horizontal and vertical boundary conditions (default: clamp)
      *
-     *     clamp: Filtered image pixels will be clamped to the following
-     *         range. Default: -infinity..infinity (i.e. no clamping is used)
+     * \param clamp
+     *     Filtered image pixels will be clamped to the following
+     *     range. Default: -infinity..infinity (i.e. no clamping is used)
      */
     ref<Bitmap>
     resample(const ScalarVector2u &res,
@@ -454,21 +467,20 @@ public:
                  -dr::Infinity<ScalarFloat>, dr::Infinity<ScalarFloat> }) const;
 
     /**
-     * Pad the bitmap so that each dimension is at least ``min_size``
+     * \brief Pad the bitmap so that each dimension is at least \c min_size
      *
-     * Dimensions already >= ``min_size`` are left unchanged.  The extra
+     * Dimensions already >= \c min_size are left unchanged.  The extra
      * pixels are filled by replicating the nearest edge row or column
      * (simple edge-clamp), so this works with any component format
-     * (including integer types that `resample()` does not support).
+     * (including integer types that \ref resample() does not support).
      *
-     * Returns:
-     *     A new bitmap with the padded size, or a reference to ``this``
-     *     if no padding is needed.
+     * \return A new bitmap with the padded size, or a reference to \c this
+     *         if no padding is needed.
      */
     ref<Bitmap> pad_to(const ScalarVector2u &min_size) const;
 
     /**
-     * Convert the bitmap into another pixel and/or component format
+     * \brief Convert the bitmap into another pixel and/or component format
      *
      * This helper function can be used to efficiently convert a bitmap
      * between different underlying representations. For instance, it can
@@ -477,18 +489,17 @@ public:
      *
      * This function roughly does the following:
      *
-     * * For each pixel and channel, it converts the associated value
+     * <ul>
+     * <li>For each pixel and channel, it converts the associated value
      *   into a normalized linear-space form (any gamma of the source
-     *   bitmap is removed)
-     *
-     * * gamma correction (sRGB ramp) is applied
-     *   if ``srgb_gamma`` is ``True``
-     *
-     * * The corrected value is clamped against the representable range
-     *   of the desired component format.
-     *
-     * * The clamped gamma-corrected value is then written to
-     *   the new bitmap
+     *   bitmap is removed)</li>
+     * <li>gamma correction (sRGB ramp) is applied
+     *     if \c srgb_gamma is \c true </li>
+     * <li>The corrected value is clamped against the representable range
+     *   of the desired component format.</li>
+     * <li>The clamped gamma-corrected value is then written to
+     *   the new bitmap</li>
+     * </ul>
      *
      * If the pixel formats differ, this function will also perform basic
      * conversions (e.g. spectrum to rgb, luminance to uniform spectrum
@@ -498,17 +509,20 @@ public:
      * the source and target bitmap, therefore it won't be affected by
      * any gamma-related transformations.
      *
-     * Args:
-     *     pixel_format: Specifies the desired pixel format
+     * \remark This <tt>convert()</tt> variant usually returns a new
+     * bitmap instance. When the conversion would just involve copying
+     * the original bitmap, the function becomes a no-op and returns
+     * the current instance.
      *
-     *     component_format: Specifies the desired component format
+     * \ref pixel_format
+     *      Specifies the desired pixel format
      *
-     *     srgb_gamma: Specifies whether a sRGB gamma ramp should be applied to
-     *         the output values.
+     * \ref component_format
+     *      Specifies the desired component format
      *
-     * Note:
-     *     This ``convert()`` variant always returns a new
-     *     bitmap instance.
+     * \ref srgb_gamma
+     *      Specifies whether a sRGB gamma ramp should be applied to
+     *      the output values.
      */
     ref<Bitmap> convert(PixelFormat pixel_format,
                         sj::Type component_format,
@@ -518,15 +532,14 @@ public:
     void convert(Bitmap *target) const;
 
     /**
-     * Accumulate the contents of another bitmap into the
+     * \brief Accumulate the contents of another bitmap into the
      * region with the specified offset
      *
      * Out-of-bounds regions are safely ignored. It is assumed that
-     * ``bitmap != this``.
+     * <tt>bitmap != this</tt>.
      *
-     * Note:
-     *     This function throws an exception when the bitmaps
-     *     use different component formats or channels.
+     * \remark This function throws an exception when the bitmaps
+     * use different component formats or channels.
      */
     void accumulate(const Bitmap *bitmap,
                     Point2i source_offset,
@@ -534,42 +547,40 @@ public:
                     Vector2i size);
 
     /**
-     * Accumulate the contents of another bitmap into the
+     * \brief Accumulate the contents of another bitmap into the
      * region with the specified offset
      *
-     * This convenience function calls the main ``accumulate()``
-     * implementation with ``size`` set to ``bitmap->size()``
-     * and ``source_offset`` set to zero. Out-of-bounds regions are
-     * ignored. It is assumed that ``bitmap != this``.
+     * This convenience function calls the main <tt>accumulate()</tt>
+     * implementation with <tt>size</tt> set to <tt>bitmap->size()</tt>
+     * and <tt>source_offset</tt> set to zero. Out-of-bounds regions are
+     * ignored. It is assumed that <tt>bitmap != this</tt>.
      *
-     * Note:
-     *     This function throws an exception when the bitmaps
-     *     use different component formats or channels.
+     * \remark This function throws an exception when the bitmaps
+     * use different component formats or channels.
      */
     void accumulate(const Bitmap *bitmap, const Point2i &target_offset) {
         accumulate(bitmap, Point2i(0), target_offset, bitmap->size());
     }
 
     /**
-     * Accumulate the contents of another bitmap into the
+     * \brief Accumulate the contents of another bitmap into the
      * region with the specified offset
      *
-     * This convenience function calls the main ``accumulate()``
-     * implementation with ``size`` set to ``bitmap->size()``
-     * and ``source_offset`` and ``target_offset`` set to zero.
+     * This convenience function calls the main <tt>accumulate()</tt>
+     * implementation with <tt>size</tt> set to <tt>bitmap->size()</tt>
+     * and <tt>source_offset</tt> and <tt>target_offset</tt> set to zero.
      * Out-of-bounds regions are ignored. It is assumed
-     * that ``bitmap != this``.
+     * that <tt>bitmap != this</tt>.
      *
-     * Note:
-     *     This function throws an exception when the bitmaps
-     *     use different component formats or channels.
+     * \remark This function throws an exception when the bitmaps
+     * use different component formats or channels.
      */
     void accumulate(const Bitmap *bitmap) {
         accumulate(bitmap, Point2i(0), Point2i(0), bitmap->size());
     }
 
     /**
-     * Split an multi-channel image buffer (e.g. from an OpenEXR image
+     * \brief Split an multi-channel image buffer (e.g. from an OpenEXR image
      * with lots of AOVs) into its constituent layers
      */
     std::vector<std::pair<std::string, ref<Bitmap>>> split() const;
@@ -660,13 +671,13 @@ public:
 
 
 /**
- * Accumulate the contents of a source bitmap into a
+ * \brief Accumulate the contents of a source bitmap into a
  * target bitmap with specified offsets for both.
  *
  * Out-of-bounds regions are safely ignored. It is assumed that
- * ``source != target``.
+ * <tt>source != target</tt>.
  *
- * The function supports ``T`` being a raw pointer or an arbitrary Dr.Jit array
+ * The function supports `T` being a raw pointer or an arbitrary Dr.Jit array
  * that can potentially live on the GPU and/or be differentiable.
  */
 template <typename T, typename ConstT>

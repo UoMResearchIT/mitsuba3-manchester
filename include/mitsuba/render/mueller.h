@@ -28,11 +28,11 @@ NAMESPACE_BEGIN(mitsuba)
 NAMESPACE_BEGIN(mueller)
 
 /**
- * Constructs the Mueller matrix of an ideal depolarizer
- *
- * Args:
- *     value: The value of the (0, 0) element
- */
+* \brief Constructs the Mueller matrix of an ideal depolarizer
+*
+* \param value
+*   The value of the (0, 0) element
+*/
 template <typename Float>
 MuellerMatrix<Float> depolarizer(Float value = 1.f) {
     MuellerMatrix<Float> result = dr::zeros<MuellerMatrix<Float>>();
@@ -41,26 +41,26 @@ MuellerMatrix<Float> depolarizer(Float value = 1.f) {
 }
 
 /**
- * Constructs the Mueller matrix of an ideal absorber
- *
- * Args:
- *     value: The amount of absorption.
- */
+* \brief Constructs the Mueller matrix of an ideal absorber
+*
+* \param value
+*     The amount of absorption.
+*/
 template <typename Float>
 MuellerMatrix<Float> absorber(Float value) {
     return value;
 }
 
 /**
- * Constructs the Mueller matrix of a linear polarizer
- * which transmits linear polarization at 0 degrees.
- *
- * Collett :cite:`Collett1993PolarizedLight`, Ch. 5 eq. (13)
- *
- * Args:
- *     value: The amount of attenuation of the transmitted component (1 corresponds
- *         to an ideal polarizer).
- */
+* \brief Constructs the Mueller matrix of a linear polarizer
+* which transmits linear polarization at 0 degrees.
+*
+* "Polarized Light" by Edward Collett, Ch. 5 eq. (13)
+*
+* \param value
+*     The amount of attenuation of the transmitted component (1 corresponds
+*     to an ideal polarizer).
+*/
 template <typename Float>
 MuellerMatrix<Float> linear_polarizer(Float value = 1.f) {
     Float a = value * 0.5f;
@@ -73,18 +73,19 @@ MuellerMatrix<Float> linear_polarizer(Float value = 1.f) {
 }
 
 /**
- * Constructs the Mueller matrix of a linear retarder which has its fast
+ * \brief Constructs the Mueller matrix of a linear retarder which has its fast
  * axis aligned horizontally.
  *
  * This implements the general case with arbitrary phase shift and can be used
  * to construct the common special cases of quarter-wave and half-wave plates.
  *
- * Goldstein :cite:`Goldstein2010PolarizedLight`, Ch. 6 eq. (6.43). Note that
- * the fast and slow axis were flipped in the first edition by Collett
- * :cite:`Collett1993PolarizedLight`.
+ * "Polarized Light, Third Edition" by Dennis H. Goldstein, Ch. 6 eq. (6.43)
+ * (Note that the fast and slow axis were flipped in the first edition by Edward
+ * Collett.)
  *
- * Args:
- *     phase: The phase difference between the fast and slow axis
+ * \param phase
+ *     The phase difference between the fast and slow axis
+ *
  */
 template <typename Float>
 MuellerMatrix<Float> linear_retarder(Float phase) {
@@ -99,9 +100,9 @@ MuellerMatrix<Float> linear_retarder(Float phase) {
 }
 
 /**
- * Constructs the Mueller matrix of a (right) circular polarizer.
+ * \brief Constructs the Mueller matrix of a (right) circular polarizer.
  *
- * Chipman et al. :cite:`Chipman2018PolarizedLight`, Table 6.2
+ * "Polarized Light and Optical Systems" by Chipman et al. Table 6.2
  */
 template <typename Float>
 MuellerMatrix<Float> right_circular_polarizer() {
@@ -114,9 +115,9 @@ MuellerMatrix<Float> right_circular_polarizer() {
 }
 
 /**
- * Constructs the Mueller matrix of a (left) circular polarizer.
+ * \brief Constructs the Mueller matrix of a (left) circular polarizer.
  *
- * Chipman et al. :cite:`Chipman2018PolarizedLight`, Table 6.2
+ * "Polarized Light and Optical Systems" by Chipman et al. Table 6.2
  */
 template <typename Float>
 MuellerMatrix<Float> left_circular_polarizer() {
@@ -129,10 +130,10 @@ MuellerMatrix<Float> left_circular_polarizer() {
 }
 
 /**
- * Constructs the Mueller matrix of a linear diattenuator, which
- * attenuates the electric field components at 0 and 90 degrees by
- * ``x`` and ``y``, respectively.
- */
+* \brief Constructs the Mueller matrix of a linear diattenuator, which
+* attenuates the electric field components at 0 and 90 degrees by
+* 'x' and 'y', * respectively.
+*/
 template <typename Float>
 MuellerMatrix<Float> diattenuator(Float x, Float y) {
     Float a = 0.5f * (x + y),
@@ -148,17 +149,17 @@ MuellerMatrix<Float> diattenuator(Float x, Float y) {
 }
 
 /**
- * Constructs the Mueller matrix of an ideal rotator, which performs a
- * counter-clockwise rotation of the electric field by ``theta`` radians (when
- * facing the light beam from the sensor side).
- *
- * To be more precise, it rotates the reference frame of the current Stokes
- * vector. For example: horizontally linear polarized light s1 = [1,1,0,0]
- * will look like -45˚ linear polarized light s2 = R(45˚) * s1 = [1,0,-1,0]
- * after applying a rotator of +45˚ to it.
- *
- * Collett :cite:`Collett1993PolarizedLight`, Ch. 5 eq. (43)
- */
+  * \brief Constructs the Mueller matrix of an ideal rotator, which performs a
+  * counter-clockwise rotation of the electric field by 'theta' radians (when
+  * facing the light beam from the sensor side).
+  *
+  * To be more precise, it rotates the reference frame of the current Stokes
+  * vector. For example: horizontally linear polarized light s1 = [1,1,0,0]
+  * will look like -45˚ linear polarized light s2 = R(45˚) * s1 = [1,0,-1,0]
+  * after applying a rotator of +45˚ to it.
+  *
+  * "Polarized Light" by Edward Collett, Ch. 5 eq. (43)
+  */
 template <typename Float>
 MuellerMatrix<Float> rotator(Float theta) {
     auto [s, c] = dr::sincos(2.f * theta);
@@ -171,9 +172,9 @@ MuellerMatrix<Float> rotator(Float theta) {
 }
 
 /**
- * Applies a counter-clockwise rotation to the mueller matrix
- * of a given element.
- */
+  * \brief Applies a counter-clockwise rotation to the mueller matrix
+  * of a given element.
+  */
 template <typename Float>
 MuellerMatrix<Float> rotated_element(Float theta,
                                      const MuellerMatrix<Float> &M) {
@@ -182,15 +183,16 @@ MuellerMatrix<Float> rotated_element(Float theta,
 }
 
 /**
- * Calculates the Mueller matrix of a specular reflection at an
+ * \brief Calculates the Mueller matrix of a specular reflection at an
  * interface between two dielectrics or conductors.
  *
- * Args:
- *     cos_theta_i: Cosine of the angle between the surface normal and the incident ray
+ * \param cos_theta_i
+ *      Cosine of the angle between the surface normal and the incident ray
  *
- *     eta: Complex-valued relative refractive index of the interface. In the real
- *         case, a value greater than 1.0 means that the surface normal
- *         points into the region of lower density.
+ * \param eta
+ *      Complex-valued relative refractive index of the interface. In the real
+ *      case, a value greater than 1.0 case means that the surface normal
+ *      points into the region of lower density.
  */
 template <typename Float, typename Eta>
 MuellerMatrix<Float> specular_reflection(Float cos_theta_i, Eta eta) {
@@ -221,15 +223,16 @@ MuellerMatrix<Float> specular_reflection(Float cos_theta_i, Eta eta) {
 }
 
 /**
- * Calculates the Mueller matrix of a specular transmission at an
+ * \brief Calculates the Mueller matrix of a specular transmission at an
  * interface between two dielectrics or conductors.
  *
- * Args:
- *     cos_theta_i: Cosine of the angle between the surface normal and the incident ray
+ * \param cos_theta_i
+ *      Cosine of the angle between the surface normal and the incident ray
  *
- *     eta: Complex-valued relative refractive index of the interface. A value
- *         greater than 1.0 in the real case means that the surface normal is
- *         pointing into the region of lower density.
+ * \param eta
+ *      Complex-valued relative refractive index of the interface. A value
+ *      greater than 1.0 in the real case means that the surface normal is
+ *      pointing into the region of lower density.
  */
 template <typename Float>
 MuellerMatrix<Float> specular_transmission(Float cos_theta_i, Float eta) {
@@ -262,7 +265,7 @@ MuellerMatrix<Float> specular_transmission(Float cos_theta_i, Float eta) {
 }
 
 /**
- * Gives the reference frame basis for a Stokes vector.
+ * \brief Gives the reference frame basis for a Stokes vector.
  *
  * For light transport involving polarized quantities it is essential to keep
  * track of reference frames. A Stokes vector is only meaningful if we also know
@@ -270,12 +273,13 @@ MuellerMatrix<Float> specular_transmission(Float cos_theta_i, Float eta) {
  * In Mitsuba, these reference frames are never explicitly stored but instead
  * can be computed on the fly using this function.
  *
- * Args:
- *     forward: Direction of travel for Stokes vector (normalized)
+ * \param forward
+ *      Direction of travel for Stokes vector (normalized)
  *
- * Returns:
- *     The (implicitly defined) reference coordinate system basis for the
- *     Stokes vector traveling along ``forward``.
+ * \return
+ *      The (implicitly defined) reference coordinate system basis for the
+ *      Stokes vector traveling along \ref forward.
+ *
  */
 template <typename Vector3>
 Vector3 stokes_basis(const Vector3 &forward) {
@@ -283,25 +287,27 @@ Vector3 stokes_basis(const Vector3 &forward) {
 }
 
 /**
- * Gives the Mueller matrix that aligns the reference frames (defined by
+ * \brief Gives the Mueller matrix that aligns the reference frames (defined by
  * their respective basis vectors) of two collinear stokes vectors.
  *
- * If we have a stokes vector s_current expressed in ``basis_current``, we can
- * re-interpret it as a stokes vector ``rotate_stokes_basis(..) * s1`` that is
- * expressed in ``basis_target`` instead.
+ * If we have a stokes vector s_current expressed in 'basis_current', we can
+ * re-interpret it as a stokes vector rotate_stokes_basis(..) * s1 that is
+ * expressed in 'basis_target' instead.
  * For example: Horizontally polarized light [1,1,0,0] in a basis [1,0,0] can be
  * interpreted as +45˚ linear polarized light [1,0,1,0] by switching to a target
  * basis [0.707, -0.707, 0].
  *
- * Args:
- *     forward: Direction of travel for Stokes vector (normalized)
+ * \param forward
+ *      Direction of travel for Stokes vector (normalized)
  *
- *     basis_current: Current (normalized) Stokes basis. Must be orthogonal to ``forward``.
+ * \param basis_current
+ *      Current (normalized) Stokes basis. Must be orthogonal to \c forward.
  *
- *     basis_target: Target (normalized) Stokes basis. Must be orthogonal to ``forward``.
+ * \param basis_target
+ *      Target (normalized) Stokes basis. Must be orthogonal to \c forward.
  *
- * Returns:
- *     Mueller matrix that performs the desired change of reference frames.
+ * \return
+ *      Mueller matrix that performs the desired change of reference frames.
  */
 template <typename Vector3,
           typename Float = dr::value_t<Vector3>,
@@ -317,31 +323,37 @@ MuellerMatrix rotate_stokes_basis(const Vector3 &forward,
 }
 
 /**
- * Return the Mueller matrix for some new reference frames.
+ * \brief Return the Mueller matrix for some new reference frames.
  * This version rotates the input/output frames independently.
  *
  * This operation is often used in polarized light transport when we have a
- * known Mueller matrix ``M`` that operates from ``in_basis_current`` to
- * ``out_basis_current`` but instead want to re-express it as a Mueller matrix
- * that operates from ``in_basis_target`` to ``out_basis_target``.
+ * known Mueller matrix 'M' that operates from 'in_basis_current' to
+ * 'out_basis_current' but instead want to re-express it as a Mueller matrix
+ * that operates from 'in_basis_target' to 'out_basis_target'.
  *
- * Args:
- *     M: The current Mueller matrix that operates from ``in_basis_current`` to ``out_basis_current``.
+ * \param M
+ *      The current Mueller matrix that operates from \c in_basis_current to \c out_basis_current.
  *
- *     in_forward: Direction of travel for input Stokes vector (normalized)
+ * \param in_forward
+ *      Direction of travel for input Stokes vector (normalized)
  *
- *     in_basis_current: Current (normalized) input Stokes basis. Must be orthogonal to ``in_forward``.
+ * \param in_basis_current
+ *      Current (normalized) input Stokes basis. Must be orthogonal to \c in_forward.
  *
- *     in_basis_target: Target (normalized) input Stokes basis. Must be orthogonal to ``in_forward``.
+ * \param in_basis_target
+ *      Target (normalized) input Stokes basis. Must be orthogonal to \c in_forward.
  *
- *     out_forward: Direction of travel for output Stokes vector (normalized)
+ * \param out_forward
+ *      Direction of travel for input Stokes vector (normalized)
  *
- *     out_basis_current: Current (normalized) output Stokes basis. Must be orthogonal to ``out_forward``.
+ * \param out_basis_current
+ *      Current (normalized) output Stokes basis. Must be orthogonal to \c out_forward.
  *
- *     out_basis_target: Target (normalized) output Stokes basis. Must be orthogonal to ``out_forward``.
+ * \param out_basis_target
+ *      Target (normalized) output Stokes basis. Must be orthogonal to \c out_forward.
  *
- * Returns:
- *     New Mueller matrix that operates from ``in_basis_target`` to ``out_basis_target``.
+ * \return
+ *      New Mueller matrix that operates from \c in_basis_target to \c out_basis_target.
  */
 template <typename Vector3,
           typename Float = dr::value_t<Vector3>,
@@ -359,25 +371,28 @@ MuellerMatrix rotate_mueller_basis(const MuellerMatrix &M,
 }
 
 /**
- * Return the Mueller matrix for some new reference frames.
+ * \brief Return the Mueller matrix for some new reference frames.
  * This version applies the same rotation to the input/output frames.
  *
  * This operation is often used in polarized light transport when we have a
- * known Mueller matrix ``M`` that operates from ``basis_current`` to
- * ``basis_current`` but instead want to re-express it as a Mueller matrix that
- * operates from ``basis_target`` to ``basis_target``.
+ * known Mueller matrix 'M' that operates from 'basis_current' to
+ * 'basis_current' but instead want to re-express it as a Mueller matrix that
+ * operates from 'basis_target' to 'basis_target'.
  *
- * Args:
- *     M: The current Mueller matrix that operates from ``basis_current`` to ``basis_current``.
+ * \param M
+ *      The current Mueller matrix that operates from \c basis_current to \c basis_current.
  *
- *     forward: Direction of travel for input Stokes vector (normalized)
+ * \param forward
+ *      Direction of travel for input Stokes vector (normalized)
  *
- *     basis_current: Current (normalized) input Stokes basis. Must be orthogonal to ``forward``.
+ * \param basis_current
+ *      Current (normalized) input Stokes basis. Must be orthogonal to \c forward.
  *
- *     basis_target: Target (normalized) input Stokes basis. Must be orthogonal to ``forward``.
+ * \param basis_target
+ *      Target (normalized) input Stokes basis. Must be orthogonal to \c forward.
  *
- * Returns:
- *     New Mueller matrix that operates from ``basis_target`` to ``basis_target``.
+ * \return
+ *      New Mueller matrix that operates from \c basis_target to \c basis_target.
  */
 template <typename Vector3,
           typename Float = dr::value_t<Vector3>,

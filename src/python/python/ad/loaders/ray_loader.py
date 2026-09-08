@@ -8,10 +8,10 @@ import drjit as dr
 
 class FlatSensor(mi.Sensor):
     """
-    Sensor used internally by `RayDataLoader`.
+    Sensor used internally by :py:class:`~mitsuba.ad.RayDataLoader`.
 
     Its film has one row with ``pixels_per_batch`` pixels. Before each render
-    call, `RayDataLoader.next` stores the selected flat
+    call, :py:meth:`~mitsuba.ad.RayDataLoader.next()` stores the selected flat
     source pixel indices in ``pixel_idx``. Sampling this sensor then remaps
     those flat indices to the corresponding source sensor and pixel
     coordinates.
@@ -137,7 +137,7 @@ class RayDataLoader:
     Minibatch loader for rendering rays and matching target pixels.
 
     This class treats every pixel of every source sensor as one flattened sample.
-    Calling `next` returns a target tensor with shape
+    Calling :py:meth:`next()` returns a target tensor with shape
     ``(1, pixels_per_batch, channels)`` together with an internal sensor that is
     configured to render the same flattened pixels.
 
@@ -161,30 +161,33 @@ class RayDataLoader:
         """
         Initialize the ray data loader.
 
-        Args:
-            sensors: Source sensor(s). They must share a full film size, have
-                no crop window, disable ``sample_border``, and use the same
-                number of base channels as the target images.
+        Parameter ``sensors`` (``mi.Sensor`` or ``list[mi.Sensor]``):
+            Source sensor(s). They must share a full film size, have no crop
+            window, disable ``sample_border``, and use the same number of base
+            channels as the target images.
 
-            target_images: Target image tensor(s), one per sensor. Each
-                tensor must have shape ``(height, width, channels)`` matching
-                the corresponding sensor film.
+        Parameter ``target_images`` (``mi.TensorXf`` or ``list[mi.TensorXf]``):
+            Target image tensor(s), one per sensor. Each tensor must have shape
+            ``(height, width, channels)`` matching the corresponding sensor
+            film.
 
-            pixels_per_batch: Number of flattened pixels returned by each
-                `RayDataLoader.next` call. It must be
-                positive and no larger than ``total_pixels``.
+        Parameter ``pixels_per_batch`` (``int``):
+            Number of flattened pixels returned by each
+            :py:meth:`~mitsuba.ad.RayDataLoader.next()` call. It must be
+            positive and no larger than ``total_pixels``.
 
-            seed: Base seed used for deterministic pixel permutation.
+        Parameter ``seed`` (``int``):
+            Base seed used for deterministic pixel permutation.
 
-            regular_reshuffle: When enabled, reshuffle at the beginning of
-                every full pass through the padded pixel set. Otherwise,
-                reuse the initial permutation.
+        Parameter ``regular_reshuffle`` (``bool``):
+            When enabled, reshuffle at the beginning of every full pass through
+            the padded pixel set. Otherwise, reuse the initial permutation.
 
-            tile_size: Side length of square tiles used for pixel shuffling.
-                A value of ``1`` gives a fully random pixel permutation,
-                intermediate values improve spatial coherence, and values at
-                least as large as the image dimensions fall back to
-                whole-image permutation.
+        Parameter ``tile_size`` (``int``):
+            Side length of square tiles used for pixel shuffling. A value of
+            ``1`` gives a fully random pixel permutation, intermediate values
+            improve spatial coherence, and values at least as large as the
+            image dimensions fall back to whole-image permutation.
         """
 
         # Validate tile_size parameter
@@ -419,8 +422,8 @@ class RayDataLoader:
         Create a padded buffer from pixel indices to fit
         ``effective_total_pixels``.
 
-        Args:
-            pixel_indices: Dr.Jit array containing pixel indices.
+        Parameter ``pixel_indices`` (``mi.UInt32``):
+            Dr.Jit array containing pixel indices.
 
         Returns a padded buffer of size ``effective_total_pixels``.
         """
@@ -493,7 +496,7 @@ class RayDataLoader:
     def next(self):
         """Get the next batch of pixel indices and corresponding target tensor.
 
-        This method reshuffles the pixel index buffer every ``iter_shuffle``
+        This method reshuffles the pixel index buffer every `iter_shuffle`
         iterations. It reuses and mutates the same flat sensor on every call.
         """
         counter = dr.opaque(mi.UInt32, self.counter)

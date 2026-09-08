@@ -1,5 +1,3 @@
-.. _sec-diff-rendering-tutos:
-
 .. image:: ../../resources/data/docs/images/banners/banner_04.jpg
     :width: 100%
     :align: center

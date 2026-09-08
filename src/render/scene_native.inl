@@ -223,7 +223,7 @@ NativeAccel<Float, Spectrum>::ray_intersect_naive(
     PreliminaryIntersection3f pi =
         accel->template ray_intersect_naive<false>(ray, active);
 
-    return pi.compute_surface_interaction(ray, +RayFlags::Default, active);
+    return pi.compute_surface_interaction(ray, +RayFlags::All, active);
 }
 
 NAMESPACE_END(mitsuba)

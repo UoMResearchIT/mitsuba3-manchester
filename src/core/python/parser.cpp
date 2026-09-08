@@ -1,4 +1,3 @@
-#include <nanobind/nanobind.h> // Needs to be first, to get `ref<T>` caster
 #include <mitsuba/python/python.h>
 #include <mitsuba/core/parser.h>
 #include <mitsuba/core/object.h>
@@ -158,15 +157,16 @@ static void parse_dict_impl(ParserState &state, const nb::dict &d,
                 if (!child_dict.contains("path"))
                     Throw("[%s] Resource path is missing 'path' attribute", path);
 
+                ref<FileResolver> fs = mitsuba::file_resolver();
                 fs::path resource_path(nb::cast<std::string_view>(child_dict["path"]));
 
                 if (!resource_path.is_absolute() && !fs::exists(resource_path))
-                    resource_path = state.resolver->resolve(resource_path);
+                    resource_path = fs->resolve(resource_path);
 
                 if (!fs::exists(resource_path))
                     Throw("[%s] Folder \"%s\" not found", path, resource_path);
 
-                state.resolver->prepend(resource_path);
+                fs->prepend(resource_path);
                 continue;
             }
 
@@ -236,7 +236,6 @@ static void parse_dict_impl(ParserState &state, const nb::dict &d,
 
 static ParserState parse_dict(const ParserConfig &, const nb::dict &d) {
     ParserState state;
-    state.resolver = new FileResolver(*file_resolver());
 
     // Create root node
     SceneNode root;
@@ -304,10 +303,10 @@ static nb::object single_object_or_list(std::vector<ref<Object>> &objects) {
     if (objects.size() == 1)
         return cast_object(objects[0]);
 
-    nb::list_builder l(objects.size());
+    nb::list l;
     for (ref<Object> &obj : objects)
-        l.put(cast_object(obj));
-    return l.commit();
+        l.append(cast_object(obj));
+    return l;
 }
 
 /// Get the current variant
@@ -323,32 +322,32 @@ MI_PY_EXPORT(parser) {
     auto parser = m.def_submodule("parser", "Scene parsing infrastructure");
 
     // Export ParserConfig
-    nb::class_<ParserConfig>(parser, "ParserConfig", D(parser, ParserConfig))
+    nb::class_<ParserConfig>(parser, "ParserConfig")
         .def(nb::init<std::string_view>(), "variant"_a,
-             D(parser, ParserConfig, ParserConfig))
+             "Constructor that takes variant name")
         .def_rw("unused_parameters", &ParserConfig::unused_parameters,
-                D(parser, ParserConfig, unused_parameters))
+                "How to handle unused \"$key\" -> \"value\" substitution parameters: Error (default), Warn, or Debug")
         .def_rw("unused_properties", &ParserConfig::unused_properties,
-                D(parser, ParserConfig, unused_properties))
+                "How to handle unused properties during instantiation: Error (default), Warn, or Debug")
         .def_rw("max_include_depth", &ParserConfig::max_include_depth,
-                D(parser, ParserConfig, max_include_depth))
+                "Maximum include depth to prevent infinite recursion (default: 15)")
         .def_rw("variant", &ParserConfig::variant,
-                D(parser, ParserConfig, variant))
+                "Target variant for instantiation (e.g., \"scalar_rgb\", \"cuda_spectral\")")
         .def_rw("parallel", &ParserConfig::parallel,
-                D(parser, ParserConfig, parallel))
+                "Enable parallel instantiation for better performance (default: true)")
         .def_rw("merge_equivalent", &ParserConfig::merge_equivalent,
-                D(parser, ParserConfig, merge_equivalent))
+                "Enable merging of equivalent nodes (deduplication) (default: true)")
         .def_rw("merge_meshes", &ParserConfig::merge_meshes,
-                D(parser, ParserConfig, merge_meshes));
+                "Enable merging of meshes into a single merge shape (default: true)");
 
     // Export SceneNode
-    nb::class_<SceneNode>(parser, "SceneNode", D(parser, SceneNode))
+    nb::class_<SceneNode>(parser, "SceneNode")
         .def(nb::init<>())
         .def(nb::init<const SceneNode &>(), "Copy constructor")
-        .def_rw("type", &SceneNode::type, D(parser, SceneNode, type))
-        .def_rw("file_index", &SceneNode::file_index, D(parser, SceneNode, file_index))
-        .def_rw("offset", &SceneNode::offset, D(parser, SceneNode, offset))
-        .def_rw("props", &SceneNode::props, D(parser, SceneNode, props))
+        .def_rw("type", &SceneNode::type, "Object type")
+        .def_rw("file_index", &SceneNode::file_index, "File index in ParserState::files")
+        .def_rw("offset", &SceneNode::offset, "Byte offset of the node within the parsed file/string")
+        .def_rw("props", &SceneNode::props, "Properties of this node")
         .def("__eq__", &SceneNode::operator==)
         .def("__ne__", &SceneNode::operator!=);
 
@@ -357,13 +356,12 @@ MI_PY_EXPORT(parser) {
         parser, "SceneNodeList");
 
     // Export ParserState
-    nb::class_<ParserState>(parser, "ParserState", D(parser, ParserState))
+    nb::class_<ParserState>(parser, "ParserState")
         .def(nb::init<>())
         .def(nb::init<const ParserState &>(), "Copy constructor")
-        .def_rw("nodes", &ParserState::nodes, D(parser, ParserState, nodes))
-        .def_rw("node_paths", &ParserState::node_paths, D(parser, ParserState, node_paths))
-        .def_rw("files", &ParserState::files, D(parser, ParserState, files))
-        .def_rw("resolver", &ParserState::resolver, D(parser, ParserState, resolver))
+        .def_rw("nodes", &ParserState::nodes, "List of all scene nodes")
+        .def_rw("node_paths", &ParserState::node_paths, "Node paths for dictionary parsing")
+        .def_rw("files", &ParserState::files, "List of parsed files")
         .def_prop_rw("id_to_index",
             [](const ParserState &s) {
                 nb::dict result;
@@ -377,8 +375,8 @@ MI_PY_EXPORT(parser) {
                     s.id_to_index[nb::cast<std::string>(key)] = nb::cast<size_t>(value);
                 }
             },
-            D(parser, ParserState, id_to_index))
-        .def_rw("versions", &ParserState::versions, D(parser, ParserState, versions))
+            "Map from IDs to node indices")
+        .def_rw("versions", &ParserState::versions, "Version number for each file")
         .def_prop_ro("root",
             [](ParserState &s) -> SceneNode & {
                 if (s.nodes.empty())
@@ -386,7 +384,7 @@ MI_PY_EXPORT(parser) {
                 return s.root();
             },
             nb::rv_policy::reference_internal,
-            D(parser, ParserState, root))
+            "Access the root node")
         .def("__eq__", &ParserState::operator==)
         .def("__ne__", &ParserState::operator!=);
 
@@ -396,14 +394,14 @@ MI_PY_EXPORT(parser) {
               return parse_file(config, fs::path(filename), convert_param_list(kwargs));
           },
           "config"_a, "filename"_a, "kwargs"_a,
-          D(parser, parse_file));
+          "Parse a scene from an XML file");
 
     parser.def("parse_string",
           [](const ParserConfig &config, std::string_view string, nb::kwargs kwargs) {
               return parse_string(config, string, convert_param_list(kwargs));
           },
           "config"_a, "string"_a, "kwargs"_a,
-          D(parser, parse_string));
+          "Parse a scene from an XML string");
 
     parser.def("parse_dict", &parse_dict,
           "config"_a, "dict"_a,
@@ -411,39 +409,39 @@ MI_PY_EXPORT(parser) {
 
     parser.def("transform_upgrade", &transform_upgrade,
           "config"_a, "state"_a,
-          D(parser, transform_upgrade));
+          "Upgrade scene data to latest version");
 
     parser.def("transform_resolve_references", &transform_resolve,
           "config"_a, "state"_a,
-          D(parser, transform_resolve));
+          "Resolve named references and raise an error when detecting broken links");
 
     parser.def("transform_resolve", &transform_resolve,
           "config"_a, "state"_a,
-          D(parser, transform_resolve));
+          "Resolve named references and raise an error when detecting broken links");
 
     parser.def("transform_merge_equivalent", &transform_merge_equivalent,
           "config"_a, "state"_a,
-          D(parser, transform_merge_equivalent));
+          "Merge equivalent nodes to reduce memory usage and improve performance");
 
     parser.def("transform_merge_meshes", &transform_merge_meshes,
           "config"_a, "state"_a,
-          D(parser, transform_merge_meshes));
+          "Combine meshes with identical materials");
 
     parser.def("transform_reorder", &transform_reorder,
           "config"_a, "state"_a,
-          D(parser, transform_reorder));
+          "Reorder immediate children of scene nodes for better readability");
 
     parser.def("transform_relocate", &transform_relocate,
           "config"_a, "state"_a, "output_directory"_a,
-          D(parser, transform_relocate));
+          "Relocate scene files to organized subfolders");
 
     parser.def("transform_all", &transform_all,
           "config"_a, "state"_a,
-          D(parser, transform_all));
+          "Apply all transformations in the correct order");
 
     parser.def("file_location", &file_location,
           "state"_a, "node"_a,
-          D(parser, file_location));
+          "Get human-readable file location for a node");
 
     parser.def("instantiate",
           [](const ParserConfig &config, ParserState &state) -> nb::object {
@@ -455,15 +453,15 @@ MI_PY_EXPORT(parser) {
               return single_object_or_list(objects);
           },
           "config"_a, "state"_a,
-          D(parser, instantiate));
+          "Instantiate the parsed representation into concrete Mitsuba objects");
 
     parser.def("write_file", &write_file,
           "state"_a, "filename"_a, "add_section_headers"_a = false,
-          D(parser, write_file));
+          "Write scene data to an XML file");
 
     parser.def("write_string", &write_string,
           "state"_a, "add_section_headers"_a = false,
-          D(parser, write_string));
+          "Convert scene data to an XML string");
 
     // ======================== Main interface ========================
 
@@ -478,35 +476,47 @@ MI_PY_EXPORT(parser) {
             config.merge_equivalent = optimize;
             config.merge_meshes = optimize;
 
+            // Set up FileResolver like the old parser does
+            fs::path filename(name);
+            if (!fs::exists(filename))
+                Throw("\"%s\": file does not exist!", filename);
+
+            ref<FileResolver> fs_backup = file_resolver();
+            ref<FileResolver> fs = new FileResolver(*fs_backup);
+            fs->prepend(filename.parent_path());
+            set_file_resolver(fs.get());
+
             std::vector<ref<Object>> objects;
-            {
+            try {
                 nb::gil_scoped_release release;
                 parser::ParserState state = parser::parse_file(config, name, params);
                 parser::transform_all(config, state);
                 objects = parser::instantiate(config, state);
+            } catch (...) {
+                set_file_resolver(fs_backup.get());
+                throw;
             }
+
+            set_file_resolver(fs_backup.get());
 
             return single_object_or_list(objects);
         },
-        nb::sig("def load_file(path: str, parallel: bool = True, "
-                "optimize: bool = True, **kwargs) -> typing.Any"),
         "path"_a, "parallel"_a = true, "optimize"_a = true, "kwargs"_a,
-        R"doc(
-        Load a Mitsuba scene or object from an XML file
+        R"doc(Load a Mitsuba scene or object from an XML file
 
-        Returns the loaded object, or a list of objects if the description
-        contains several top-level entries. The declared return type is
-        ``typing.Any`` so that the concrete type (e.g. :py:class:`Scene`) can
-        be used without a cast.
+Parameter ``name``:
+    The XML scene description's filename
 
-        Args:
-            path: The XML scene description's filename
-            parallel: Whether the loading should be executed on multiple threads in parallel
-            optimize: Whether to enable optimizations like merging identical objects
-                (default: True)
-            kwargs: A dictionary of key value pairs that will replace any default
-                parameters declared in the XML.
-        )doc");
+Parameter ``parallel``:
+    Whether the loading should be executed on multiple threads in parallel
+
+Parameter ``optimize``:
+    Whether to enable optimizations like merging identical objects (default: True)
+
+Parameter ``kwargs``:
+    A dictionary of key value pairs that will replace any default parameters declared in the XML.
+
+)doc");
 
 
     m.def(
@@ -529,25 +539,22 @@ MI_PY_EXPORT(parser) {
 
             return single_object_or_list(objects);
         },
-        nb::sig("def load_string(value: str, parallel: bool = True, "
-                "optimize: bool = True, **kwargs) -> typing.Any"),
         "value"_a, "parallel"_a = true, "optimize"_a = true, "kwargs"_a,
-        R"doc(
-        Load a Mitsuba scene or object from an XML string
+        R"doc(Load a Mitsuba scene or object from an XML string
 
-        Returns the loaded object, or a list of objects if the description
-        contains several top-level entries. The declared return type is
-        ``typing.Any`` so that the concrete type (e.g. :py:class:`Scene`) can
-        be used without a cast.
+Parameter ``value``:
+    The XML scene description as a string
 
-        Args:
-            value: The XML scene description as a string
-            parallel: Whether the loading should be executed on multiple threads in parallel
-            optimize: Whether to enable optimizations like merging identical objects
-                (default: True)
-            kwargs: A dictionary of key value pairs that will replace any default
-                parameters declared in the XML.
-        )doc");
+Parameter ``parallel``:
+    Whether the loading should be executed on multiple threads in parallel
+
+Parameter ``optimize``:
+    Whether to enable optimizations like merging identical objects (default: True)
+
+Parameter ``kwargs``:
+    A dictionary of key value pairs that will replace any default parameters declared in the XML.
+
+)doc");
 
     m.def(
         "load_dict",
@@ -558,33 +565,39 @@ MI_PY_EXPORT(parser) {
             config.merge_equivalent = optimize;
             config.merge_meshes = optimize;
 
-            // Parse, transform, and instantiate
-            parser::ParserState state = parse_dict(config, dict);
+            ref<FileResolver> fs_backup = file_resolver();
+            ref<FileResolver> fs = new FileResolver(*fs_backup);
+            set_file_resolver(fs.get());
 
             std::vector<ref<Object>> objects;
-            {
-                nb::gil_scoped_release release;
-                parser::transform_all(config, state);
-                objects = parser::instantiate(config, state);
+            try {
+                // Parse, transform, and instantiate
+                parser::ParserState state = parse_dict(config, dict);
+                {
+                    nb::gil_scoped_release release;
+                    parser::transform_all(config, state);
+                    objects = parser::instantiate(config, state);
+                }
+            } catch(...) {
+                set_file_resolver(fs_backup.get());
+                throw;
             }
+
+            set_file_resolver(fs_backup.get());
 
             return single_object_or_list(objects);
         },
-        nb::sig("def load_dict(dict: dict, parallel: bool = True, "
-                "optimize: bool = True) -> typing.Any"),
         "dict"_a, "parallel"_a=true, "optimize"_a=true,
-        R"doc(
-        Load a Mitsuba scene or object from an Python dictionary
+        R"doc(Load a Mitsuba scene or object from an Python dictionary
 
-        Returns the loaded object, or a list of objects if the dictionary
-        contains several top-level entries. The declared return type is
-        ``typing.Any`` so that the concrete type (e.g. :py:class:`Scene`) can
-        be used without a cast.
+Parameter ``dict``:
+    Python dictionary containing the object description
 
-        Args:
-            dict: Python dictionary containing the object description
-            parallel: Whether the loading should be executed on multiple threads in parallel
-            optimize: Whether to enable optimizations like merging identical objects
-                (default: True)
-        )doc");
+Parameter ``parallel``:
+    Whether the loading should be executed on multiple threads in parallel
+
+Parameter ``optimize``:
+    Whether to enable optimizations like merging identical objects (default: True)
+
+)doc");
 }
