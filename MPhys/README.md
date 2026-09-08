@@ -35,6 +35,8 @@ The repository contains some examples of code, though you will likely find that 
 
 Most of the examples that have been run are the python scripts in the `Single_Emitter` directory, so please look at those to get ideas for your examples. It is likely that you will also have to build a scene for your simulations, to find out more about this look at the [mitsuba documentation](https://mitsuba.readthedocs.io/en/stable/index.html).
 
+Some of these examples have been written up into experiment files, which are in the `Single_Emitter/performance_scaling_experiments` directory.  These experiments were particularly aimed at understanding the scaling performance of Mitsuba with increased numbers of (input) photons.
+
 Note: the repository also contains Jupyter notebooks; it's possible to set up your environment to be able to then run notebooks in a Windows browser.  Follow the instructions at [https://code.adonline.id.au/jupyter-notebook-in-windows-subsystem-for-linux-wsl/](https://code.adonline.id.au/jupyter-notebook-in-windows-subsystem-for-linux-wsl/).
 
 ## Contact
