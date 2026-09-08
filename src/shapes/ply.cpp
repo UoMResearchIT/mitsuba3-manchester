@@ -123,8 +123,7 @@ public:
 
         Log(Debug, "Loading mesh from \"%s\" ..", m_filename);
 
-        ref<FileStream> file = new FileStream(m_source_path);
-        ref<Stream> stream = file.get();
+        ref<Stream> stream = new FileStream(m_source_path);
         ScopedPhase phase(ProfilerPhase::LoadGeometry);
         Timer timer;
 
@@ -137,7 +136,7 @@ public:
                         "\"%s\": performance warning -- this file uses the ASCII PLY format, which "
                         "is slow to parse. Consider converting it to the binary PLY format.",
                         m_filename);
-                stream = parse_ascii(file.get(), header.elements, m_filename);
+                stream = parse_ascii((FileStream *) stream.get(), header.elements, m_filename);
             }
         } catch (const std::exception &e) {
             fail(e.what());
@@ -327,7 +326,6 @@ public:
         if (stream->tell() != stream->size())
             fail("invalid file -- trailing content");
 
-        file->close();
         from_packed(std::move(pm));
 
         Log(Debug, "\"%s\": read %i faces, %i vertices (%s in %s)",

@@ -61,8 +61,7 @@ public:
             if (!fs::exists(file_path))
                 fail("file not found");
 
-            ref<FileStream> file = new FileStream(file_path);
-            ref<Stream> stream = file.get();
+            ref<Stream> stream = new FileStream(file_path);
             ScopedPhase phase(ProfilerPhase::LoadGeometry);
 
             PLYHeader header;
@@ -74,7 +73,7 @@ public:
                             "\"%s\": performance warning -- this file uses the ASCII PLY format, which "
                             "is slow to parse. Consider converting it to the binary PLY format.",
                             name);
-                    stream = parse_ascii(file.get(), header.elements, name);
+                    stream = parse_ascii((FileStream *) stream.get(), header.elements, name);
                 }
             } catch (const std::exception &e) {
                 fail(e.what());
@@ -201,8 +200,6 @@ public:
 
                 count++;
             }
-
-            file->close();
 
             m_data = dr::load<FloatStorage>(ellipsoid_data.get(), count * EllipsoidStructSize);
 

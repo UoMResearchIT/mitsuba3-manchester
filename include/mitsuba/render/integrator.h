@@ -296,8 +296,34 @@ public:
      */
     virtual std::vector<std::string> aov_names() const;
 
-    /// Whether the deprecated ``hide_emitters`` flag was set (see `Scene`)
-    bool hide_emitters() const { return m_hide_emitters; }
+    /**
+     * Traces a ray in the scene and returns the first intersection that
+     * is not an area emitter.
+     *
+     * This is a helper method for when the ``hide_emitters`` flag is set.
+     *
+     * Args:
+     *     scene: The scene that the ray will intersect.
+     *
+     *     ray: The ray that determines the direction in which to trace new rays
+     *
+     *     coherent: Setting this flag to ``True`` can noticeably improve performance when
+     *         ``ray`` contains a coherent set of rays (e.g. primary camera rays),
+     *         and when using ``llvm_*`` variants of the renderer along with
+     *         Embree. It has no effect in scalar or CUDA/OptiX variants.
+     *         (Default: False)
+     *
+     *     active: A mask that indicates which lanes are active. Typically, this should
+     *         be set to ``True`` for any lane where the current depth is 0 (for
+     *         ``hide_emitters``). (Default: True)
+     *
+     * Returns:
+     *     The first intersection that is not an area emitter along the ``ray``.
+     */
+    PreliminaryIntersection3f skip_area_emitters(const Scene *scene,
+                                                 const Ray3f &ray,
+                                                 bool coherent = false,
+                                                 Mask active = true) const;
 
     MI_DECLARE_PLUGIN_BASE_CLASS(Integrator)
 
@@ -319,7 +345,7 @@ protected:
     /// Timer used to enforce the timeout.
     Timer m_render_timer;
 
-    /// Deprecated flag that hides all emitters from direct view
+    /// Flag for disabling direct visibility of emitters
     bool m_hide_emitters;
 
     /// Identifier (if available)

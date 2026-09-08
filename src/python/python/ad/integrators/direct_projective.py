@@ -145,18 +145,13 @@ class DirectProjectiveIntegrator(PSIntegrator):
             si = si_shade
         else:
             with dr.resume_grad(when=not primal):
-                # The camera mask hides emitters marked as invisible
-                si = scene.ray_intersect(
-                    ray, ray_flags=mi.RayFlags.Default, coherent=True,
-                    active=active,
-                    visibility_mask=mi.RayMask.Camera)
+                si = scene.ray_intersect(ray, ray_flags=mi.RayFlags.Default,
+                                         coherent=True, active=active)
 
-        # The emitter lookup reuses the camera mask so that escaped rays
-        # ignore a hidden environment emitter
-        with dr.resume_grad(when=not primal):
-            emitter = si.emitter(scene, active,
-                                 visibility_mask=mi.RayMask.Camera)
-            L += emitter.eval(si, active)
+        # Hide the environment emitter if necessary
+        if not self.hide_emitters:
+            with dr.resume_grad(when=not primal):
+                L += si.emitter(scene).eval(si, active)
 
         active_next = active & si.is_valid() & (self.max_depth > 1)
 
@@ -335,8 +330,8 @@ class DirectProjectiveIntegrator(PSIntegrator):
 
             # The ray origin is wrong, but this is fine if we only need the primal
             # radiance
-            si_fg = scene.compute_surface_interaction(
-                dummy_ray, pi_fg, mi.RayFlags.Default, active)
+            si_fg = pi_fg.compute_surface_interaction(
+                dummy_ray, mi.RayFlags.Default, active)
 
             # We know the incident direction is valid since this is the
             # foreground interaction. Overwrite the incident direction to avoid
@@ -366,8 +361,8 @@ class DirectProjectiveIntegrator(PSIntegrator):
 
             # The ray origin is wrong, but this is fine if we only need the primal
             # radiance
-            si_fg = scene.compute_surface_interaction(
-                dummy_ray, pi_fg, mi.RayFlags.Default, active)
+            si_fg = pi_fg.compute_surface_interaction(
+                dummy_ray, mi.RayFlags.Default, active)
 
             # If smooth normals are used, it is possible that the computed
             # shading normal near visibility silhouette points to the wrong side

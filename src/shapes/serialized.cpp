@@ -316,11 +316,8 @@ public:
 
         uint32_t flags = 0;
         stream->read(flags);
-        if (version == MI_FILEFORMAT_VERSION_V4) {
-            std::string name = read_cstring(stream);
-            if (!name.empty())
-                m_filename = std::move(name);
-        }
+        if (version == MI_FILEFORMAT_VERSION_V4)
+            m_filename = read_cstring(stream);
 
         size_t vertex_count, face_count;
         stream->read(vertex_count);
@@ -384,7 +381,6 @@ public:
             pm.set_face(i, { faces[3 * i], faces[3 * i + 1],
                              faces[3 * i + 2] });
 
-        stream_->close();
         from_packed(std::move(pm));
     }
 
@@ -400,13 +396,7 @@ public:
 
         uint32_t flags = 0;
         stream->read(flags);
-
-        // A mesh that was written without a name keeps the "<file>@<index>"
-        // label that the constructor derived from the scene description
-        std::string name;
-        stream->read(name);
-        if (!name.empty())
-            m_filename = std::move(name);
+        stream->read(m_filename);
 
         if (!(flags & (uint32_t) SerializedFlags::SinglePrecision))
             Throw("\"%s\": version 5 serialized meshes are stored in single "
@@ -458,8 +448,6 @@ public:
             stream->read_array(dst, (string::starts_with(name, "face_")
                                          ? face_count : vertex_count) * dim);
         }
-
-        stream_->close();
 
         // The records arrived in bulk, so they are transformed after the fact
         pm.set_transform(m_to_world.scalar(), m_flip_normals);
