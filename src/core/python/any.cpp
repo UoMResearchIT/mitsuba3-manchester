@@ -22,8 +22,7 @@ public:
 
     ~PythonObjectStorage() {
         nb::gil_scoped_acquire gil;
-        if (gil.is_valid())
-            m_obj.dec_ref();
+        m_obj.dec_ref();
     }
 
     const std::type_info &type() const override {

@@ -7,7 +7,7 @@
 NAMESPACE_BEGIN(mitsuba)
 
 /**
- * The parameters of the SGGX phase function stored as a pair of
+ * \brief The parameters of the SGGX phase function stored as a pair of
  * 3D vectors [[S_xx, S_yy, S_zz], [S_xy, S_xz, S_yz]]
  */
 template <typename Float>
@@ -16,7 +16,7 @@ struct SGGXPhaseFunctionParams {
     dr::Array<Float, 3> off_diag;
 
     /**
-     * Construct from a pair of 3D vectors [S_xx, S_yy, S_zz] and
+     * \brief Construct from a pair of 3D vectors [S_xx, S_yy, S_zz] and
      * [S_xy, S_xz, S_yz] that correspond to the entries of a symmetric positive-definite
      * 3x3 matrix.
      */
@@ -46,26 +46,29 @@ std::ostream &operator<<(std::ostream &os, const SGGXPhaseFunctionParams<Float> 
 }
 
 /**
- * Samples the visible normal distribution of the SGGX
+ * \brief Samples the visible normal distribution of the SGGX
  * microflake distribution
  *
- * This function is based on the SGGX microflake distribution of Heitz et al.
- * :cite:`Heitz2015SGGX`.
+ * This function is based on the paper
  *
- * Args:
- *     sh_frame: Shading frame aligned with the incident direction,
- *         e.g. constructed as ``Frame3f(wi)``
+ *   "The SGGX microflake distribution", Siggraph 2015
+ *   by Eric Heitz, Jonathan Dupuy, Cyril Crassin and Carsten Dachsbacher
  *
- *     sample: A uniformly distributed 2D sample
+ * \param sh_frame
+ *      Shading frame aligned with the incident direction,
+ *      e.g. constructed as Frame3f(wi)
  *
- *     s: The parameters of the SGGX phase function S_xx, S_yy, S_zz, S_xy, S_xz,
- *         and S_yz that describe the entries of a symmetric positive definite 3x3
- *         matrix. The user needs to ensure that the parameters indeed represent a
- *         positive definite matrix.
+ * \param sample
+ *      A uniformly distributed 2D sample
  *
- * Returns:
- *     A normal (in world space) sampled from the distribution
- *     of visible normals
+ * \param s
+ *      The parameters of the SGGX phase function S_xx, S_yy, S_zz, S_xy, S_xz,
+ *      and S_yz that describe the entries of a symmetric positive definite 3x3
+ *      matrix. The user needs to ensure that the parameters indeed represent a
+ *      positive definite matrix.
+ *
+ * \return A normal (in world space) sampled from the distribution
+ *         of visible normals
  */
 template <typename Float>
 Normal<Float, 3> sggx_sample(const Frame<Float> &sh_frame,
@@ -102,19 +105,19 @@ Normal<Float, 3> sggx_sample(const Vector<Float, 3> &wi,
 }
 
 /**
- * Evaluates the probability of sampling a given normal
+ * \brief Evaluates the probability of sampling a given normal
  * using the SGGX microflake distribution
  *
- * Args:
- *     wm: The microflake normal
+ * \param wm
+ *      The microflake normal
  *
- *     s: The parameters of the SGGX phase function S_xx, S_yy, S_zz, S_xy, S_xz,
- *         and S_yz that describe the entries of a symmetric positive definite 3x3
- *         matrix. The user needs to ensure that the parameters indeed represent a
- *         positive definite matrix.
+ * \param s
+ *      The parameters of the SGGX phase function S_xx, S_yy, S_zz, S_xy, S_xz,
+ *      and S_yz that describe the entries of a symmetric positive definite 3x3
+ *      matrix. The user needs to ensure that the parameters indeed represent a
+ *      positive definite matrix.
  *
- * Returns:
- *     The probability of sampling a certain normal
+ * \return The probability of sampling a certain normal
  */
 template <typename Float>
 Float sggx_pdf(const Vector<Float, 3> &wm, const dr::Array<Float, 6> &s) {
@@ -134,18 +137,18 @@ Float sggx_pdf(const Vector<Float, 3> &wm, const dr::Array<Float, 6> &s) {
 }
 
 /**
- * Evaluates the projected area of the SGGX microflake distribution
+ * \brief Evaluates the projected area of the SGGX microflake distribution
  *
- * Args:
- *     wi: A 3D direction
+ * \param wi
+ *      A 3D direction
  *
- *     s: The parameters of the SGGX phase function S_xx, S_yy, S_zz, S_xy, S_xz,
- *         and S_yz that describe the entries of a symmetric positive definite 3x3
- *         matrix. The user needs to ensure that the parameters indeed represent a
- *         positive definite matrix.
+ * \param s
+ *      The parameters of the SGGX phase function S_xx, S_yy, S_zz, S_xy, S_xz,
+ *      and S_yz that describe the entries of a symmetric positive definite 3x3
+ *      matrix. The user needs to ensure that the parameters indeed represent a
+ *      positive definite matrix.
  *
- * Returns:
- *     The projected area of the SGGX microflake distribution
+ * \return The projected area of the SGGX microflake distribution
  */
 template <typename Float>
 MI_INLINE Float sggx_projected_area(const Vector<Float, 3> &wi,

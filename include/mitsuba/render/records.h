@@ -6,7 +6,7 @@
 NAMESPACE_BEGIN(mitsuba)
 
 /**
- * Generic sampling record for positions
+ * \brief Generic sampling record for positions
  *
  * This sampling record is used to implement techniques that draw a position
  * from a point, line, surface, or volume domain in 3D and furthermore provide
@@ -19,7 +19,7 @@ NAMESPACE_BEGIN(mitsuba)
 template <typename Float_, typename Spectrum_>
 struct PositionSample {
     // =============================================================
-    // Type declarations
+    //! @{ \name Type declarations
     // =============================================================
 
     using Float    = Float_;
@@ -27,10 +27,11 @@ struct PositionSample {
     MI_IMPORT_RENDER_BASIC_TYPES()
     using SurfaceInteraction3f = typename RenderAliases::SurfaceInteraction3f;
 
+    //! @}
     // =============================================================
 
     // =============================================================
-    // Fields
+    //! @{ \name Fields
     // =============================================================
 
     /// Sampled position
@@ -40,12 +41,12 @@ struct PositionSample {
     Normal3f n;
 
     /**
-     * Optional: 2D sample position associated with the record
+     * \brief Optional: 2D sample position associated with the record
      *
      * In some uses of this record, a sampled position may be associated with
      * an important 2D quantity, such as the texture coordinates on a triangle
      * mesh or a position on the aperture of a sensor. When applicable, such
-     * positions are stored in the ``uv`` attribute.
+     * positions are stored in the \c uv attribute.
      */
     Point2f uv;
 
@@ -58,14 +59,15 @@ struct PositionSample {
     /// Set if the sample was drawn from a degenerate (Dirac delta) distribution
     Mask delta;
 
+    //! @}
     // =============================================================
 
     // =============================================================
-    // Constructors, methods, etc.
+    //! @{ \name Constructors, methods, etc.
     // =============================================================
 
     /**
-     * Create a position sampling record from a surface intersection
+     * \brief Create a position sampling record from a surface intersection
      *
      * This is useful to determine the hypothetical sampling density on a
      * surface after hitting it using standard ray tracing. This happens for
@@ -80,6 +82,7 @@ struct PositionSample {
                    Float time, Float pdf, Mask delta)
         : p(p), n(n), uv(uv), time(time), pdf(pdf), delta(delta) { }
 
+    //! @}
     // =============================================================
 
     DRJIT_STRUCT(PositionSample, p, n, uv, time, pdf, delta)
@@ -88,17 +91,17 @@ struct PositionSample {
 // -----------------------------------------------------------------------------
 
 /**
- * Record for solid-angle based area sampling techniques
+ * \brief Record for solid-angle based area sampling techniques
  *
  * This data structure is used in techniques that sample positions relative to
- * a fixed reference position in the scene. For instance, *direct
- * illumination strategies* importance sample the incident radiance
+ * a fixed reference position in the scene. For instance, <em>direct
+ * illumination strategies</em> importance sample the incident radiance
  * received by a given surface location. Mitsuba uses this approach in a wider
  * bidirectional sense: sampling the incident importance due to a sensor also
  * uses the same data structures and strategies, which are referred to as
- * *direct sampling*.
+ * <em>direct sampling</em>.
  *
- * This record inherits all fields from `PositionSample3f` and extends it with
+ * This record inherits all fields from \ref PositionSample and extends it with
  * two useful quantities that are cached so that they don't need to be
  * recomputed: the unit direction and distance from the reference position to
  * the sampled point.
@@ -106,7 +109,7 @@ struct PositionSample {
 template <typename Float_, typename Spectrum_>
 struct DirectionSample : public PositionSample<Float_, Spectrum_> {
     // =============================================================
-    // Type declarations
+    //! @{ \name Type declarations
     // =============================================================
     using Float    = Float_;
     using Spectrum = Spectrum_;
@@ -118,10 +121,11 @@ struct DirectionSample : public PositionSample<Float_, Spectrum_> {
     using SurfaceInteraction3f = typename RenderAliases::SurfaceInteraction3f;
     using EmitterPtr           = typename RenderAliases::EmitterPtr;
 
+    //! @}
     // =============================================================
 
     // =============================================================
-    // Fields
+    //! @{ \name Fields
     // =============================================================
 
     /// Unit direction from the reference point to the target shape
@@ -131,50 +135,48 @@ struct DirectionSample : public PositionSample<Float_, Spectrum_> {
     Float dist;
 
     /**
-     * Optional: pointer to an associated object
-     *
-     * In some uses of this record, sampling a position also involves choosing
-     * one of several objects (shapes, emitters, ..) on which the position
-     * lies. In that case, the ``emitter`` attribute stores a pointer to this
-     * object.
-     */
+      * \brief Optional: pointer to an associated object
+      *
+      * In some uses of this record, sampling a position also involves choosing
+      * one of several objects (shapes, emitters, ..) on which the position
+      * lies. In that case, the \c object attribute stores a pointer to this
+      * object.
+      */
     EmitterPtr emitter = nullptr;
 
+    //! @}
     // =============================================================
 
     // =============================================================
-    // Constructors, methods, etc.
+    //! @{ \name Constructors, methods, etc.
     // =============================================================
 
     /**
-     * Create a direct sampling record, which can be used to *query*
+     * \brief Create a direct sampling record, which can be used to \a query
      * the density of a surface position with respect to a given reference
      * position.
      *
-     * Direction ``d`` is set so that it points from the reference surface to
-     * the intersected surface, as required when using e.g. the `Endpoint`
+     * Direction 's' is set so that it points from the reference surface to
+     * the intersected surface, as required when using e.g. the \ref Endpoint
      * interface to compute PDF values.
      *
-     * Args:
-     *     scene: Pointer to the scene, which is needed to extract information
-     *         about the environment emitter (if applicable)
+     * \param scene
+     *     Pointer to the scene, which is needed to extract information
+     *     about the environment emitter (if applicable)
      *
-     *     si: Surface interaction
+     * \param it
+     *     Surface interaction
      *
-     *     ref: Reference position
-     *
-     *     visibility_mask: Ray-side visibility mask used for the emitter
-     *         lookup (see `SurfaceInteraction.emitter`)
+     * \param ref
+     *     Reference position
      */
     DirectionSample(const Scene<Float, Spectrum> *scene,
                     const SurfaceInteraction3f &si,
-                    const Interaction3f &ref,
-                    const dr::uint32_array_t<Float> &visibility_mask
-                        = (uint32_t) RayMask::All) : Base(si) {
+                    const Interaction3f &ref) : Base(si) {
         Vector3f rel = si.p - ref.p;
         dist = dr::norm(rel);
         d = select(si.is_valid(), rel / dist, -si.wi);
-        emitter = si.emitter(scene, true, visibility_mask);
+        emitter = si.emitter(scene);
     }
 
     /// Element-by-element constructor
@@ -192,6 +194,7 @@ struct DirectionSample : public PositionSample<Float_, Spectrum_> {
         return drjit::masked(*this, array);
     }
 
+    //! @}
     // =============================================================
 
     DRJIT_STRUCT(DirectionSample, p, n, uv, time, pdf, delta, d, dist, emitter)

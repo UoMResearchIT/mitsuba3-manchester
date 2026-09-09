@@ -23,19 +23,6 @@ Area light (:monosp:`area`)
    - Specifies the emitted radiance in units of power per unit area per unit steradian.
    - |exposed|, |differentiable|
 
- * - visible
-   - |bool|
-   - Whether the emitter appears in directly visible (camera) rays. When set
-     to |false|, camera rays pass through the emitter's shape and hit whatever
-     lies behind it, while shadows, reflections, and indirect illumination
-     remain unaffected. (Default: |true|)
-
- * - twosided
-   - |bool|
-   - Emit light from both sides of the surface. The default emits only into
-     the hemisphere containing the surface normal. Enabling this parameter
-     doubles the emitted power for a given radiance value. (Default: |false|)
-
 This plugin implements an area light, i.e. a light source that emits
 diffuse illumination from the exterior of an arbitrary shape.
 Since the emission profile of an area light is completely diffuse, it
@@ -82,7 +69,6 @@ public:
                   "shape.");
 
         m_radiance = props.get_emissive_texture<Texture>("radiance", 1.f);
-        m_twosided = props.get<bool>("twosided", false);
 
         m_flags = +EmitterFlags::Surface;
         if (m_radiance->is_spatially_varying())
@@ -97,9 +83,9 @@ public:
     Spectrum eval(const SurfaceInteraction3f &si, Mask active) const override {
         MI_MASKED_FUNCTION(ProfilerPhase::EndpointEvaluate, active);
 
-        Spectrum result = depolarizer<Spectrum>(m_radiance->eval(si, active));
-        if (!m_twosided)
-            result = dr::select(Frame3f::cos_theta(si.wi) > 0.f, result, 0.f);
+        auto result = depolarizer<Spectrum>(m_radiance->eval(si, active)) &
+                      (Frame3f::cos_theta(si.wi) > 0.f);
+
         return result;
     }
 
@@ -111,19 +97,8 @@ public:
         // 1. Sample spatial component
         auto [ps, pos_weight] = sample_position(time, sample2, active);
 
-        // 2. Sample directional component. Two-sided emitters reuse the first
-        // sample dimension to pick a side.
-        Vector3f local;
-        if (m_twosided) {
-            Point2f sample_dir = sample3;
-            Mask flip = sample_dir.x() >= .5f;
-            sample_dir.x() = dr::select(flip, dr::fmadd(sample_dir.x(), 2.f, -1.f),
-                                        sample_dir.x() * 2.f);
-            local = warp::square_to_cosine_hemisphere(sample_dir);
-            dr::masked(local.z(), flip) = -local.z();
-        } else {
-            local = warp::square_to_cosine_hemisphere(sample3);
-        }
+        // 2. Sample directional component
+        Vector3f local = warp::square_to_cosine_hemisphere(sample3);
 
         // 3. Sample spectral component
         SurfaceInteraction3f si(ps, dr::zeros<Wavelength>());
@@ -133,8 +108,7 @@ public:
         si.wavelengths = wavelength;
 
         // Note: some terms cancelled out with `warp::square_to_cosine_hemisphere_pdf`.
-        Spectrum weight = pos_weight * wav_weight *
-                          (m_twosided ? 2.f : 1.f) * dr::Pi<ScalarFloat>;
+        Spectrum weight = pos_weight * wav_weight * dr::Pi<ScalarFloat>;
 
         return { si.spawn_ray(si.to_world(local)),
                  depolarizer<Spectrum>(weight) };
@@ -159,9 +133,7 @@ public:
         if (likely(!m_radiance->is_spatially_varying())) {
             // Texture is uniform, try to importance sample the shape wrt. solid angle at 'it'
             ds = m_shape->sample_direction(it, sample, active);
-            active &= ds.pdf != 0.f;
-            if (!m_twosided)
-                active &= dr::dot(ds.d, ds.n) < 0.f;
+            active &= dr::dot(ds.d, ds.n) < 0.f && (ds.pdf != 0.f);
 
             si = SurfaceInteraction3f(ds, it.wavelengths);
         } else {
@@ -169,7 +141,7 @@ public:
             auto [uv, pdf] = m_radiance->sample_position(sample, active);
             active &= (pdf != 0.f);
 
-            si = m_shape->eval_parameterization(uv, +RayFlags::Default, active);
+            si = m_shape->eval_parameterization(uv, +RayFlags::All, active);
             si.wavelengths = it.wavelengths;
             active &= si.is_valid();
 
@@ -185,8 +157,6 @@ public:
             ds.d /= ds.dist;
 
             Float dp = dr::dot(ds.d, ds.n);
-            if (m_twosided)
-                dp = -dr::abs(dp);
             active &= dp < 0.f;
             ds.pdf = dr::select(active, pdf / dr::norm(dr::cross(si.dp_du, si.dp_dv)) *
                                         dist_squared / -dp, 0.f);
@@ -201,8 +171,6 @@ public:
                         Mask active) const override {
         MI_MASKED_FUNCTION(ProfilerPhase::EndpointEvaluate, active);
         Float dp = dr::dot(ds.d, ds.n);
-        if (m_twosided)
-            dp = -dr::abs(dp);
         active &= dp < 0.f;
 
         if constexpr (drjit::is_jit_v<Float>) {
@@ -218,7 +186,7 @@ public:
             value = m_shape->pdf_direction(it, ds, active);
         } else {
             // This surface intersection would be nice to avoid..
-            SurfaceInteraction3f si = m_shape->eval_parameterization(ds.uv, +RayFlags::Default, active);
+            SurfaceInteraction3f si = m_shape->eval_parameterization(ds.uv, +RayFlags::dPdUV, active);
             active &= si.is_valid();
 
             value = m_radiance->pdf_position(ds.uv, active) * dr::square(ds.dist) /
@@ -233,8 +201,6 @@ public:
                             Mask active) const override {
         MI_MASKED_FUNCTION(ProfilerPhase::EndpointEvaluate, active);
         Float dp = dr::dot(ds.d, ds.n);
-        if (m_twosided)
-            dp = -dr::abs(dp);
         active &= dp < 0.f;
 
         SurfaceInteraction3f si(ds, it.wavelengths);
@@ -265,7 +231,7 @@ public:
             auto [uv, pdf] = m_radiance->sample_position(sample, active);
             active &= (pdf != 0.f);
 
-            auto si = m_shape->eval_parameterization(uv, +RayFlags::Default, active);
+            auto si = m_shape->eval_parameterization(uv, +RayFlags::All, active);
             active &= si.is_valid();
             pdf /= dr::norm(dr::cross(si.dp_du, si.dp_dv));
 
@@ -291,7 +257,6 @@ public:
         std::ostringstream oss;
         oss << "AreaLight[" << std::endl
             << "  radiance = " << string::indent(m_radiance) << "," << std::endl
-            << "  twosided = " << m_twosided << "," << std::endl
             << "  surface_area = ";
         if (m_shape) oss << m_shape->surface_area();
         else         oss << "  <no shape attached!>";
@@ -305,7 +270,6 @@ public:
     MI_DECLARE_CLASS(AreaLight)
 private:
     ref<Texture> m_radiance;
-    bool m_twosided;
 
     MI_TRAVERSE_CB(Base, m_radiance)
 };

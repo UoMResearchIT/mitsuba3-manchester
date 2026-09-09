@@ -28,6 +28,10 @@ Particle tracer (:monosp:`ptracer`)
    - Specifies the minimum path depth, after which the implementation will start to use the
      *russian roulette* path termination criterion. (Default: 5)
 
+ * - hide_emitters
+   - |bool|
+   - Hide directly visible emitters. (Default: no, i.e. |false|)
+
  * - samples_per_pass
    - |bool|
    - If specified, divides the workload in successive passes with :paramtype:`samples_per_pass`
@@ -63,8 +67,8 @@ useful in wavefront mode.
 template <typename Float, typename Spectrum>
 class ParticleTracerIntegrator final : public AdjointIntegrator<Float, Spectrum> {
 public:
-    MI_IMPORT_BASE(AdjointIntegrator, m_samples_per_pass, m_rr_depth,
-                    m_max_depth)
+    MI_IMPORT_BASE(AdjointIntegrator, m_samples_per_pass, m_hide_emitters,
+                    m_rr_depth, m_max_depth)
     MI_IMPORT_TYPES(Scene, Sensor, Film, Sampler, ImageBlock, Emitter,
                      EmitterPtr, BSDF, BSDFPtr)
 
@@ -73,7 +77,7 @@ public:
     void sample(const Scene *scene, const Sensor *sensor, Sampler *sampler,
                 ImageBlock *block, ScalarFloat sample_scale) const override {
         // Account for emitters directly visible from the sensor
-        if (m_max_depth != 0)
+        if (m_max_depth != 0 && !m_hide_emitters)
             sample_visible_emitters(scene, sensor, sampler, block, sample_scale);
 
         // Primary & further bounces illumination
@@ -106,10 +110,8 @@ public:
         EmitterPtr emitter =
             dr::gather<EmitterPtr>(scene->emitters_dr(), emitter_idx);
 
-        // Don't connect delta emitters with sensor (both position and
-        // direction), nor emitters hidden from directly visible rays
-        Mask active = !has_flag(emitter->flags(), EmitterFlags::Delta) &&
-                      !has_flag(emitter->flags(), EmitterFlags::Invisible);
+        // Don't connect delta emitters with sensor (both position and direction)
+        Mask active = !has_flag(emitter->flags(), EmitterFlags::Delta);
 
         // 3. Emitter position sampling
         Spectrum emitter_weight = dr::zeros<Spectrum>();
@@ -119,19 +121,19 @@ public:
         Mask is_infinite = has_flag(emitter->flags(), EmitterFlags::Infinite),
              active_e = active && is_infinite;
         if (dr::any_or<true>(active_e)) {
-            // Sample a direction toward an envmap emitter starting
-            // from the center of the scene (the sensor is not part of the
-            // scene's bounding box, which could otherwise cause issues.)
+            /* Sample a direction toward an envmap emitter starting
+               from the center of the scene (the sensor is not part of the
+               scene's bounding box, which could otherwise cause issues.) */
             Interaction3f ref_it(0.f, time, dr::zeros<Wavelength>(),
                                  sensor->world_transform().translation());
 
             auto [ds, dir_weight] = emitter->sample_direction(
                 ref_it, sampler->next_2d(active), active_e);
 
-            // Note: `dir_weight` already includes the emitter radiance, but
-            // that will be accounted for again when sampling the wavelength
-            // below. Instead, we recompute just the factor due to the PDF.
-            // Also, convert to area measure.
+            /* Note: `dir_weight` already includes the emitter radiance, but
+               that will be accounted for again when sampling the wavelength
+               below. Instead, we recompute just the factor due to the PDF.
+               Also, convert to area measure. */
             emitter_weight[active_e] =
                 dr::select(ds.pdf > 0.f, dr::rcp(ds.pdf), 0.f) *
                 dr::square(ds.dist);
@@ -149,10 +151,10 @@ public:
             si[active_e] = SurfaceInteraction3f(ps, dr::zeros<Wavelength>());
         }
 
-        // 4. Connect to the sensor.
-        // Query sensor for a direction connecting to `si.p`, which also
-        // produces UVs on the sensor (for splatting). The resulting direction
-        // points from si.p (on the emitter) toward the sensor.
+        /* 4. Connect to the sensor.
+           Query sensor for a direction connecting to `si.p`, which also
+           produces UVs on the sensor (for splatting). The resulting direction
+           points from si.p (on the emitter) toward the sensor. */
         auto [sensor_ds, sensor_weight] = sensor->sample_direction(si, sampler->next_2d(), active);
         si.wi = sensor_ds.d;
 
@@ -212,13 +214,11 @@ public:
      * etc. At each interaction, we attempt to connect to the sensor and add
      * the current radiance to the given `block`.
      *
-     * Returns:
-     *     The radiance along the ray and an alpha value.
+     * Note: this will *not* account for directly visible emitters, since
+     * they require a direct connection from the emitter to the sensor. See
+     * \ref sample_visible_emitters.
      *
-     * Note:
-     *     This will *not* account for directly visible emitters, since they
-     *     require a direct connection from the emitter to the sensor. See
-     *     `sample_visible_emitters()`.
+     * \return The radiance along the ray and an alpha value.
      */
     std::pair<Spectrum, Float>
     trace_light_ray(Ray3f ray, const Scene *scene, const Sensor *sensor,
@@ -237,9 +237,9 @@ public:
         if (m_max_depth >= 0)
             active &= depth < m_max_depth;
 
-        // Set up a Dr.Jit loop (optimizes away to a normal loop in scalar mode,
-        // generates wavefront or megakernel renderer based on configuration).
-        // Register everything that changes as part of the loop here
+        /* Set up a Dr.Jit loop (optimizes away to a normal loop in scalar mode,
+           generates wavefront or megakernel renderer based on configuration).
+           Register everything that changes as part of the loop here */
         struct LoopState {
             Bool active;
             Int32 depth;
@@ -266,13 +266,12 @@ public:
             [](const LoopState& ls) { return ls.active; },
             [this, scene, sensor, block, sample_scale](LoopState& ls) {
 
-            SurfaceInteraction3f si = scene->compute_surface_interaction(
-                ls.ray, ls.pi, +RayFlags::Default);
+            SurfaceInteraction3f si = ls.pi.compute_surface_interaction(ls.ray, +RayFlags::All);
 
             BSDFPtr bsdf = si.bsdf(ls.ray);
 
-            // Connect to sensor and splat if successful. Sample a direction
-            // from the sensor to the current surface point.
+            /* Connect to sensor and splat if successful. Sample a direction
+               from the sensor to the current surface point. */
             auto [sensor_ds, sensor_weight] =
                 sensor->sample_direction(si, ls.sampler->next_2d(), ls.active);
             connect_sensor(scene, si, sensor_ds, bsdf,
@@ -345,8 +344,7 @@ public:
      * Finally, splat `weight` (with all appropriate factors) to the
      * given image block.
      *
-     * Returns:
-     *     The quantity that was accumulated to the block.
+     * \return The quantity that was accumulated to the block.
      */
     Spectrum connect_sensor(const Scene *scene, const SurfaceInteraction3f &si,
                             const DirectionSample3f &sensor_ds,
@@ -359,11 +357,8 @@ public:
             return 0.f;
 
         // Check that sensor is visible from current position (shadow ray).
-        // The segment toward the sensor corresponds to a directly visible
-        // (camera) ray, so shapes hidden from the camera do not occlude it.
         Ray3f sensor_ray = si.spawn_ray_to(sensor_ds.p);
-        active &= !scene->ray_test(sensor_ray, false, active,
-                                   +RayMask::Camera);
+        active &= !scene->ray_test(sensor_ray, active);
         if (dr::none_or<false>(active))
             return 0.f;
 
@@ -373,9 +368,9 @@ public:
         Vector3f local_d        = si.to_local(sensor_ray.d);
         Mask on_surface         = active && (si.shape != nullptr);
         if (dr::any_or<true>(on_surface)) {
-            // Note that foreshortening is only missing for directly visible
-            // emitters associated with a shape. Otherwise it's included in the
-            // BSDF. Clamp negative cosines (zero value if behind the surface).
+            /* Note that foreshortening is only missing for directly visible
+               emitters associated with a shape. Otherwise it's included in the
+               BSDF. Clamp negative cosines (zero value if behind the surface). */
 
             surface_weight[on_surface && (bsdf == nullptr)] *=
                 dr::maximum(0.f, Frame3f::cos_theta(local_d));
@@ -401,8 +396,8 @@ public:
             }
         }
 
-        // Even if the ray is not coming from a surface (no foreshortening),
-        // we still don't want light coming from behind the emitter.
+        /* Even if the ray is not coming from a surface (no foreshortening),
+           we still don't want light coming from behind the emitter. */
         Mask not_on_surface = active && (si.shape == nullptr) && (bsdf == nullptr);
         if (dr::any_or<true>(not_on_surface)) {
             Mask invalid_side = Frame3f::cos_theta(local_d) <= 0.f;
@@ -411,21 +406,22 @@ public:
 
         result = weight * surface_weight * sample_scale;
 
-        // Splatting, adjusting UVs for sensor's crop window if needed.
-        // The crop window is already accounted for in the UV positions
-        // returned by the sensor, here we just need to compensate for
-        // the block's offset that will be applied in `put`.
+        /* Splatting, adjusting UVs for sensor's crop window if needed.
+           The crop window is already accounted for in the UV positions
+           returned by the sensor, here we just need to compensate for
+           the block's offset that will be applied in `put`. */
         Float alpha = dr::select(bsdf != nullptr, 1.f, 0.f);
         Vector2f adjusted_position = sensor_ds.uv + block->offset();
 
-        // Splat RGB value onto the image buffer. The particle tracer
-        // does not use the weight channel at all
+        /* Splat RGB value onto the image buffer. The particle tracer
+           does not use the weight channel at all */
         block->put(adjusted_position, si.wavelengths, result, alpha,
                    /* weight = */ 0.f, active);
 
         return result;
     }
 
+    //! @}
     // =============================================================
 
     std::string to_string() const override {

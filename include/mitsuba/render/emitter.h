@@ -10,7 +10,7 @@ NAMESPACE_BEGIN(mitsuba)
 
 
 /**
- * This list of flags is used to classify the different types of emitters.
+ * \brief This list of flags is used to classify the different types of emitters.
  */
 enum class EmitterFlags : uint32_t {
     // =============================================================
@@ -33,17 +33,14 @@ enum class EmitterFlags : uint32_t {
     Surface              = 0x00008,
 
     // =============================================================
-    //                    Other lobe attributes
+    //!                   Other lobe attributes
     // =============================================================
 
     /// The emission depends on the UV coordinates
     SpatiallyVarying     = 0x00010,
 
-    /// The emitter is hidden from directly visible (camera) rays
-    Invisible            = 0x00020,
-
     // =============================================================
-    //                  Compound lobe attributes
+    //!                 Compound lobe attributes
     // =============================================================
 
     /// Delta function in either position or direction
@@ -67,25 +64,8 @@ public:
     /// The emitter's sampling weight.
     ScalarFloat sampling_weight() const { return m_sampling_weight; }
 
-    /// Is this emitter visible to directly visible (camera) rays?
-    bool visible() const { return m_visible; }
-
-    /// Return the 8-bit visibility mask (see `RayMask`). Invisible emitters
-    /// clear the `RayMask.Camera` bit.
-    uint32_t visibility_mask() const {
-        uint32_t mask = (uint32_t) RayMask::All;
-        if (!m_visible)
-            mask &= ~(uint32_t) RayMask::Camera;
-        return mask;
-    }
-
-    /// Flags for all components combined. The ``visible`` property is
-    /// merged in here (rather than stored in ``m_flags``) because plugin
-    /// constructors assign ``m_flags`` after the base class has run.
-    uint32_t flags(dr::mask_t<Float> /*active*/ = true) const {
-        return m_flags |
-               (m_visible ? 0u : (uint32_t) EmitterFlags::Invisible);
-    }
+    /// Flags for all components combined.
+    uint32_t flags(dr::mask_t<Float> /*active*/ = true) const { return m_flags; }
 
     void traverse(TraversalCallback *callback) override;
 
@@ -94,7 +74,7 @@ public:
     /// Return whether the emitter parameters have changed
     bool dirty() const { return m_dirty; }
 
-    /// Modify the emitter's ``dirty`` flag
+    /// Modify the emitter's "dirty" flag
     void set_dirty(bool dirty) { m_dirty = dirty; }
 
     /// This is both a class and the base of various Mitsuba plugins
@@ -110,20 +90,8 @@ protected:
     /// Sampling weight
     ScalarFloat m_sampling_weight;
 
-    /// False if the emitter is hidden from camera rays
-    bool m_visible;
-
     /// True if the emitter's parameters have changed
     bool m_dirty = false;
-
-private:
-    /// Used by the Scene to implement the deprecated ``hide_emitters``
-    /// integrator flag before building its acceleration data structures
-    void set_visible(bool visible) { m_visible = visible; }
-
-    // Qualified, since ``Endpoint`` already declares a ``Scene`` type alias
-    // that MSVC would otherwise pick up here
-    friend class mitsuba::Scene<Float, Spectrum>;
 
     MI_TRAVERSE_CB(Base)
 };
@@ -132,7 +100,7 @@ MI_EXTERN_CLASS(Emitter)
 NAMESPACE_END(mitsuba)
 
 // -----------------------------------------------------------------------
-// Enables vectorized method calls on Dr.Jit arrays of emitters
+//! @{ \name Enables vectorized method calls on Dr.Jit arrays of emitters
 // -----------------------------------------------------------------------
 
 DRJIT_CALL_TEMPLATE_BEGIN(mitsuba::Emitter)
@@ -151,4 +119,5 @@ DRJIT_CALL_TEMPLATE_BEGIN(mitsuba::Emitter)
     DRJIT_CALL_GETTER(sampling_weight)
 DRJIT_CALL_END()
 
+//! @}
 // -----------------------------------------------------------------------

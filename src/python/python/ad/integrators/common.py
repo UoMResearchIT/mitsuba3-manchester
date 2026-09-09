@@ -322,21 +322,20 @@ class ADIntegrator(mi.CppADIntegrator):
         (which may differ from the requested amount depending on the type of
         ``Sampler`` being used)
 
-        Args:
-            sensor: Specify a sensor to render the scene from a different
-                viewpoint.
+        Parameter ``sensor`` (``int``, ``mi.Sensor``):
+            Specify a sensor to render the scene from a different viewpoint.
 
-            seed: This parameter controls the initialization of the random
-                number generator during the primal rendering step. It is
-                crucial that you specify different seeds (e.g., an increasing
-                sequence) if subsequent calls should produce statistically
-                independent images (e.g. to de-correlate gradient-based
-                optimization steps).
+        Parameter ``seed` (``int``)
+            This parameter controls the initialization of the random number
+            generator during the primal rendering step. It is crucial that you
+            specify different seeds (e.g., an increasing sequence) if subsequent
+            calls should produce statistically independent images (e.g. to
+            de-correlate gradient-based optimization steps).
 
-            spp: Optional parameter to override the number of samples per
-                pixel for the primal rendering step. The value provided
-                within the original scene specification takes precedence if
-                ``spp=0``.
+        Parameter ``spp`` (``int``):
+            Optional parameter to override the number of samples per pixel for the
+            primal rendering step. The value provided within the original scene
+            specification takes precedence if ``spp=0``.
         """
 
         film = sensor.film()
@@ -401,7 +400,7 @@ class ADIntegrator(mi.CppADIntegrator):
 
 
     def sample(self,
-               mode: drjit.ADMode,
+               mode: dr.ADMode,
                scene: mi.Scene,
                sampler: mi.Sampler,
                ray: mi.Ray3f,
@@ -413,7 +412,7 @@ class ADIntegrator(mi.CppADIntegrator):
         """
         This function does the main work of differentiable rendering and
         remains unimplemented here. It is provided by subclasses of the
-        `RBIntegrator` interface.
+        ``RBIntegrator`` interface.
 
         In those concrete implementations, the function performs a Monte Carlo
         random walk, implementing a number of different behaviors depending on
@@ -430,52 +429,58 @@ class ADIntegrator(mi.CppADIntegrator):
         radiance ``δL`` and accumulates it into differentiable scene parameters.
 
         You are normally *not* expected to directly call this function. Instead,
-        use `mitsuba.render` , which performs various necessary
+        use ``mi.render()`` , which performs various necessary
         setup steps to correctly use the functionality provided here.
 
         The parameters of this function are as follows:
 
-        Args:
-            mode: Specifies whether the rendering algorithm should run in
-                primal or forward/backward derivative propagation mode.
+        Parameter ``mode`` (``drjit.ADMode``)
+            Specifies whether the rendering algorithm should run in primal or
+            forward/backward derivative propagation mode
 
-            scene: Reference to the scene being rendered in a differentiable
-                manner.
+        Parameter ``scene`` (``mi.Scene``):
+            Reference to the scene being rendered in a differentiable manner.
 
-            sampler: A pre-seeded sample generator.
+        Parameter ``sampler`` (``mi.Sampler``):
+            A pre-seeded sample generator
 
-            depth: Path depth of ``ray`` (typically set to zero). This is
-                mainly useful for forward/backward differentiable rendering
-                phases that need to obtain an incident radiance estimate. In
-                this case, they may recursively invoke
-                ``sample(mode=dr.ADMode.Primal)`` with a nonzero depth.
+        Parameter ``depth`` (``mi.UInt32``):
+            Path depth of `ray` (typically set to zero). This is mainly useful
+            for forward/backward differentiable rendering phases that need to
+            obtain an incident radiance estimate. In this case, they may
+            recursively invoke ``sample(mode=dr.ADMode.Primal)`` with a nonzero
+            depth.
 
-            δL: When back-propagating gradients (``mode ==
-                drjit.ADMode.Backward``) the ``δL`` parameter should specify
-                the adjoint radiance associated with each ray. Otherwise, it
-                must be set to ``None``.
+        Parameter ``δL`` (``mi.Spectrum``):
+            When back-propagating gradients (``mode == drjit.ADMode.Backward``)
+            the ``δL`` parameter should specify the adjoint radiance associated
+            with each ray. Otherwise, it must be set to ``None``.
 
-            state_in: The primal phase of ``sample()`` returns a state vector
-                as part of its return value. The forward/backward differential
-                phases expect that this state vector is provided to them via
-                this argument. When invoked in primal mode, it should be set
-                to ``None``.
+        Parameter ``state_in`` (``Any``):
+            The primal phase of ``sample()`` returns a state vector as part of
+            its return value. The forward/backward differential phases expect
+            that this state vector is provided to them via this argument. When
+            invoked in primal mode, it should be set to ``None``.
 
-            active: This mask array can optionally be used to indicate that
-                some of the rays are disabled.
+        Parameter ``active`` (``mi.Bool``):
+            This mask array can optionally be used to indicate that some of
+            the rays are disabled.
 
-        Returns:
-            A tuple ``(spec, valid, state_out)`` where
+        The function returns a tuple ``(spec, valid, state_out)`` where
 
-            - ``spec``: Specifies the estimated radiance and differential
-              radiance in primal and forward mode, respectively.
+        Output ``spec`` (``mi.Spectrum``):
+            Specifies the estimated radiance and differential radiance in
+            primal and forward mode, respectively.
 
-            - ``valid``: Indicates whether the rays intersected a surface,
-              which can be used to compute an alpha channel.
+        Output ``valid`` (``mi.Bool``):
+            Indicates whether the rays intersected a surface, which can be used
+            to compute an alpha channel.
 
-            - ``aovs``: Integrators may return one or more arbitrary output
-              variables (AOVs). The implementation has to guarantee that the
-              number of returned AOVs matches the length of self.aov_names().
+        Output ``aovs`` (``List[mi.Float]``):
+            Integrators may return one or more arbitrary output variables (AOVs).
+            The implementation has to guarantee that the number of returned AOVs
+            matches the length of self.aov_names().
+
         """
 
         raise Exception('RBIntegrator does not provide the sample() method. '
@@ -505,49 +510,50 @@ class RBIntegrator(ADIntegrator):
         variance or visualize the region of influence of a scene parameter. It is
         not particularly useful for simultaneous optimization of many parameters,
         since multiple differentiation passes are needed to obtain separate
-        derivatives for each scene parameter. See `mitsuba.SamplingIntegrator.render_backward`
+        derivatives for each scene parameter. See ``Integrator.render_backward()``
         for an efficient way of obtaining all parameter derivatives at once, or
-        simply use the `mitsuba.render` abstraction that hides both
-        `mitsuba.SamplingIntegrator.render_forward` and `mitsuba.SamplingIntegrator.render_backward` behind
+        simply use the ``mi.render()`` abstraction that hides both
+        ``Integrator.render_forward()`` and ``Integrator.render_backward()`` behind
         a unified interface.
 
         Before calling this function, you must first enable gradient tracking and
         furthermore associate concrete input gradients with one or more scene
         parameters, or the function will just return a zero-valued gradient image.
         This is typically done by invoking ``dr.enable_grad()`` and
-        ``dr.set_grad()`` on elements of the `mitsuba.SceneParameters` data structure
+        ``dr.set_grad()`` on elements of the ``SceneParameters`` data structure
         that can be obtained obtained via a call to
-        `mitsuba.traverse`.
+        ``mi.traverse()``.
 
-        Args:
-            scene: The scene to be rendered differentially.
+        Parameter ``scene`` (``mi.Scene``):
+            The scene to be rendered differentially.
 
-            params: An arbitrary container of scene parameters that should
-                receive gradients. Typically this will be an instance of type
-                `mitsuba.SceneParameters` obtained via
-                `mitsuba.traverse()`. However, it could also be a Python
-                list/dict/object tree (DrJit will traverse it to find all
-                parameters). Gradient tracking must be explicitly enabled for
-                each of these parameters using
-                ``dr.enable_grad(params['parameter_name'])`` (i.e.
-                ``render_forward()`` will not do this for you). Furthermore,
-                ``dr.set_grad(...)`` must be used to associate specific
-                gradient values with each parameter.
+        Parameter ``params``:
+           An arbitrary container of scene parameters that should receive
+           gradients. Typically this will be an instance of type
+           ``mi.SceneParameters`` obtained via ``mi.traverse()``. However, it
+           could also be a Python list/dict/object tree (DrJit will traverse it
+           to find all parameters). Gradient tracking must be explicitly enabled
+           for each of these parameters using ``dr.enable_grad(params['parameter_name'])``
+           (i.e. ``render_forward()`` will not do this for you). Furthermore,
+           ``dr.set_grad(...)`` must be used to associate specific gradient values
+           with each parameter.
 
-            sensor: Specify a sensor or a (sensor index) to render the scene
-                from a different viewpoint. By default, the first sensor
-                within the scene description (index 0) will take precedence.
+        Parameter ``sensor`` (``int``, ``mi.Sensor``):
+            Specify a sensor or a (sensor index) to render the scene from a
+            different viewpoint. By default, the first sensor within the scene
+            description (index 0) will take precedence.
 
-            seed: This parameter controls the initialization of the random
-                number generator. It is crucial that you specify different
-                seeds (e.g., an increasing sequence) if subsequent calls
-                should produce statistically independent images (e.g. to
-                de-correlate gradient-based optimization steps).
+        Parameter ``seed` (``int``)
+            This parameter controls the initialization of the random number
+            generator. It is crucial that you specify different seeds (e.g., an
+            increasing sequence) if subsequent calls should produce statistically
+            independent images (e.g. to de-correlate gradient-based optimization
+            steps).
 
-            spp: Optional parameter to override the number of samples per
-                pixel for the differential rendering step. The value provided
-                within the original scene specification takes precedence if
-                ``spp=0``.
+        Parameter ``spp`` (``int``):
+            Optional parameter to override the number of samples per pixel for the
+            differential rendering step. The value provided within the original
+            scene specification takes precedence if ``spp=0``.
         """
 
         if isinstance(sensor, int):
@@ -601,7 +607,7 @@ class RBIntegrator(ADIntegrator):
                 value=δL * weight,
                 weight=1.0,
                 alpha=dr.select(valid_2, mi.Float(1), mi.Float(0)),
-                aovs=δaovs,
+                aovs=[δaov * weight for δaov in δaovs],
                 wavelengths=ray.wavelengths
             )
 
@@ -636,39 +642,41 @@ class RBIntegrator(ADIntegrator):
         Before calling this function, you must first enable gradient tracking for
         one or more scene parameters, or the function will not do anything. This is
         typically done by invoking ``dr.enable_grad()`` on elements of the
-        `mitsuba.SceneParameters` data structure that can be obtained obtained via a call
-        to `mitsuba.traverse`. Use ``dr.grad()`` to query the
+        ``SceneParameters`` data structure that can be obtained obtained via a call
+        to ``mi.traverse()``. Use ``dr.grad()`` to query the
         resulting gradients of these parameters once ``render_backward()`` returns.
 
-        Args:
-            scene: The scene to be rendered differentially.
+        Parameter ``scene`` (``mi.Scene``):
+            The scene to be rendered differentially.
 
-            params: An arbitrary container of scene parameters that should
-                receive gradients. Typically this will be an instance of type
-                `mitsuba.SceneParameters` obtained via
-                `mitsuba.traverse()`. However, it could also be a Python
-                list/dict/object tree (DrJit will traverse it to find all
-                parameters). Gradient tracking must be explicitly enabled for
-                each of these parameters using
-                ``dr.enable_grad(params['parameter_name'])`` (i.e.
-                ``render_backward()`` will not do this for you).
+        Parameter ``params``:
+           An arbitrary container of scene parameters that should receive
+           gradients. Typically this will be an instance of type
+           ``mi.SceneParameters`` obtained via ``mi.traverse()``. However, it
+           could also be a Python list/dict/object tree (DrJit will traverse it
+           to find all parameters). Gradient tracking must be explicitly enabled
+           for each of these parameters using ``dr.enable_grad(params['parameter_name'])``
+           (i.e. ``render_backward()`` will not do this for you).
 
-            grad_in: Gradient image that should be back-propagated.
+        Parameter ``grad_in`` (``mi.TensorXf``):
+            Gradient image that should be back-propagated.
 
-            sensor: Specify a sensor or a (sensor index) to render the scene
-                from a different viewpoint. By default, the first sensor
-                within the scene description (index 0) will take precedence.
+        Parameter ``sensor`` (``int``, ``mi.Sensor``):
+            Specify a sensor or a (sensor index) to render the scene from a
+            different viewpoint. By default, the first sensor within the scene
+            description (index 0) will take precedence.
 
-            seed: This parameter controls the initialization of the random
-                number generator. It is crucial that you specify different
-                seeds (e.g., an increasing sequence) if subsequent calls
-                should produce statistically independent images (e.g. to
-                de-correlate gradient-based optimization steps).
+        Parameter ``seed` (``int``)
+            This parameter controls the initialization of the random number
+            generator. It is crucial that you specify different seeds (e.g., an
+            increasing sequence) if subsequent calls should produce statistically
+            independent images (e.g. to de-correlate gradient-based optimization
+            steps).
 
-            spp: Optional parameter to override the number of samples per
-                pixel for the differential rendering step. The value provided
-                within the original scene specification takes precedence if
-                ``spp=0``.
+        Parameter ``spp`` (``int``):
+            Optional parameter to override the number of samples per pixel for the
+            differential rendering step. The value provided within the original
+            scene specification takes precedence if ``spp=0``.
         """
 
         if isinstance(sensor, int):
@@ -731,7 +739,7 @@ class RBIntegrator(ADIntegrator):
                     value=L * weight,
                     weight=1.0,
                     alpha=1.0,
-                    aovs=aovs
+                    aovs=[aov * weight for aov in aovs]
                 )
 
                 δL = dr.grad(L)
@@ -877,17 +885,15 @@ class PSIntegrator(ADIntegrator):
     def override_spp(self, integrator_spp: Optional[int], runtime_spp: int, sampler_spp: int):
         """
         Utility method to override the intergrator's spp value with the one
-        received at runtime in `mitsuba.render`/``render_backward``/``render_forward``.
+        received at runtime in `render`/`render_backward`/`render_forward`.
 
         Priority order:
-
         1. If the integrator's spp is explicitly disabled (set to 0), use 0
            regardless of runtime_spp.
         2. Otherwise, prefer the runtime_spp value.
         3. If runtime_spp is 0:
-
-           - Use integrator_spp if it is defined (not None).
-           - Otherwise, fall back to sampler_spp.
+            - Use integrator_spp if it is defined (not None).
+            - Otherwise, fall back to sampler_spp.
         """
         if integrator_spp is not None and integrator_spp == 0:
             # If spp is explicitly disabled (set to 0), do not override it with
@@ -907,19 +913,17 @@ class PSIntegrator(ADIntegrator):
                   sensor: Union[int, mi.Sensor],
                   seed: mi.UInt32,
                   spp: int,
-                  mode: drjit.ADMode) -> mi.TensorXf:
+                  mode: dr.ADMode) -> mi.TensorXf:
         """
         Renders and accumulates the outputs of the primarily visible
         discontinuities, indirect discontinuities and continuous derivatives.
         It outputs an attached tensor which should subsequently be traversed by
-        a call to ``dr.forward``/``dr.backward``/``dr.enqueue``/``dr.traverse``.
+        a call to `dr.forward`/`dr.backward`/`dr.enqueue`/`dr.traverse`.
 
-        .. note::
-
-           The continuous derivatives are only attached if
-           ``radiative_backprop`` is ``False``. When using RB for the
-           continuous derivatives it should be manually added to the
-           gradient obtained by traversing the result of this method.
+        Note: The continuous derivatives are only attached if
+        `radiative_backprop` is `False`. When using RB for the continuous
+        derivatives it should be manually added to the gradient obtained by
+        traversing the result of this method.
         """
         if dr.flag(dr.JitFlag.FreezingScope):
             raise RuntimeError(
@@ -997,7 +1001,7 @@ class PSIntegrator(ADIntegrator):
                 value=L * weight,
                 weight=1.0,
                 alpha=dr.select(valid, mi.Float(1), mi.Float(0)),
-                aovs=aovs,
+                aovs=[aov * weight for aov in aovs],
                 wavelengths=ray.wavelengths
             )
 
@@ -1154,30 +1158,32 @@ class PSIntegrator(ADIntegrator):
                                    wavelengths, active):
         """
         Sample the radiance difference of two rays that hit and miss the
-        silhouette point ``ss.p`` with direction ``ss.d``.
+        silhouette point `ss.p` with direction `ss.d`.
 
-        Args:
-            scene: Reference to the scene being rendered in a differentiable
-                manner.
+        Parameter ``scene`` (``mi.Scene``)
+            Reference to the scene being rendered in a differentiable manner.
 
-            ss: Reference to the silhouette sample from which to built out
-                the boundary path.
+        Parameter ``ss`` (``mi.SilhouetteSample3f``)
+            Reference to the silhouette sample from which to built out the
+            boundary path.
 
-            curr_depth: The current depth of the boundary segment, including
-                the boundary segment itself.
+        Parameter ``curr_depth`` (``mi.UInt32``):
+            The current depth of the boundary segment, including the boundary
+            segment itself.
 
-            sampler: A pre-seeded sample generator.
+        Parameter ``sampler`` (``mi.Sampler``):
+            A pre-seeded sample generator.
 
-            wavelengths: Set of sampled wavelengths to be used for the
-                boundary path.
+        Parameter ``wavelengths`` (``mi.Wavelength``):
+            Set of sampled wavelengths to be used for the boundary path.
 
-        Returns:
-            A tuple ``(ΔL, active)`` where
+        This function returns a tuple ``(ΔL, active)`` where
 
-            - ``ΔL``: The estimated radiance difference of the foreground and
-              background.
+        Output ``ΔL`` (``mi.Spectrum``):
+            The estimated radiance difference of the foreground and background.
 
-            - ``active``: Indicates if the radiance difference is valid.
+        Output ``active`` (``mi.Bool``):
+            Indicates if the radiance difference is valid.
         """
         raise Exception('PSIntegrator does not provide the '
                         'sample_radiance_difference() method. '
@@ -1187,41 +1193,44 @@ class PSIntegrator(ADIntegrator):
     def sample_importance(self, scene, sensor, ss, max_depth, sampler,
                           wavelengths, active):
         """
-        Sample the incident importance at the silhouette point ``ss.p`` with
-        direction ``-ss.d``. If multiple connections to the sensor are valid, this
+        Sample the incident importance at the silhouette point `ss.p` with
+        direction `-ss.d`. If multiple connections to the sensor are valid, this
         method uses reservoir sampling to pick one.
 
-        Args:
-            scene: Reference to the scene being rendered in a differentiable
-                manner.
+        Parameter ``scene`` (``mi.Scene``)
+            Reference to the scene being rendered in a differentiable manner.
 
-            ss: Reference to the silhouette sample from which to built out
-                the boundary path.
+        Parameter ``ss`` (``mi.SilhouetteSample3f``)
+            Reference to the silhouette sample from which to built out the
+            boundary path.
 
-            max_depth: The maximum number of ray segments to reach the
-                sensor.
+        Parameters ``max_depth`` (``mi.UInt32``):
+            The maximum number of ray segments to reach the sensor.
 
-            sampler: A pre-seeded sample generator.
+        Parameter ``sampler`` (``mi.Sampler``):
+            A pre-seeded sample generator.
 
-            wavelengths: Set of sampled wavelengths to be used for the
-                boundary path.
+        Parameter ``wavelengths`` (``mi.Wavelength``):
+            Set of sampled wavelengths to be used for the boundary path.
 
-        Returns:
-            A tuple ``(importance, uv, depth, boundary_p, valid)`` where
+        The function returns a tuple ``(importance, uv, depth, boundary_p,
+        valid)`` where
 
-            - ``importance``: The sampled importance along the constructed
-              path.
+        Output ``importance`` (``mi.Spectrum``):
+            The sampled importance along the constructed path.
 
-            - ``uv``: The sensor splatting coordinates.
+        Output ``uv`` (``mi.Point2f``):
+            The sensor splatting coordinates.
 
-            - ``depth``: The number of segments of the sampled path from the
-              boundary segment to the sensor, including the boundary segment
-              itself.
+        Output ``depth`` (``mi.UInt32``):
+            The number of segments of the sampled path from the boundary
+            segment to the sensor, including the boundary segment itself.
 
-            - ``boundary_p``: The attached sensor-side intersection point of
-              the boundary segment.
+        Output ``boundary_p`` (``mi.Point3f``):
+            The attached sensor-side intersection point of the boundary segment.
 
-            - ``valid``: Indicates if a valid path is found.
+        Output ``valid`` (``mi.Bool``):
+            Indicates if a valid path is found.
         """
         raise Exception('PSIntegrator does not provide the '
                         'sample_importance() method. '
@@ -1266,7 +1275,7 @@ class PSIntegrator(ADIntegrator):
     ########################### Integrator interface ###########################
 
     def sample(self,
-               mode: drjit.ADMode,
+               mode: dr.ADMode,
                scene: mi.Scene,
                sampler: mi.Sampler,
                ray: mi.Ray3f,
@@ -1281,47 +1290,47 @@ class PSIntegrator(ADIntegrator):
         """
         See ADIntegrator.sample() for a description of this function's purpose.
 
-        Args:
-            depth: Path depth of ``ray`` (typically set to zero). This is
-                mainly useful for forward/backward differentiable rendering
-                phases that need to obtain an incident radiance estimate. In
-                this case, they may recursively invoke
-                ``sample(mode=dr.ADMode.Primal)`` with a nonzero depth.
+        Parameter ``depth`` (``mi.UInt32``):
+            Path depth of `ray` (typically set to zero). This is mainly useful
+            for forward/backward differentiable rendering phases that need to
+            obtain an incident radiance estimate. In this case, they may
+            recursively invoke ``sample(mode=dr.ADMode.Primal)`` with a nonzero
+            depth.
 
-            project: If set to ``True``, the integrator also returns the
-                sampled ``seedrays`` along the Monte Carlo path. This is
-                useful for projective integrators to handle discontinuous
-                derivatives.
+        Parameter ``project`` (``bool``):
+            If set to ``True``, the integrator also returns the sampled
+            ``seedrays`` along the Monte Carlo path. This is useful for
+            projective integrators to handle discontinuous derivatives.
 
-            si_shade: If set to a valid surface interaction, the integrator
-                will use this as the first ray interaction point to skip one
-                ray tracing with the given ``ray``. This is useful to
-                estimate the incident radiance at a given surface point that
-                is already known to the integrator.
+        Parameter ``si_shade`` (``mi.SurfaceInteraction3f``):
+            If set to a valid surface interaction, the integrator will use this
+            as the first ray interaction point to skip one ray tracing with the
+            given ``ray``. This is useful to estimate the incident radiance at a
+            given surface point that is already known to the integrator.
 
-        Returns:
-            A tuple ``(spec, valid, aovs, seedray / state_out)`` where
+        Output ``spec`` (``mi.Spectrum``):
+            Specifies the estimated radiance and differential radiance in primal
+            and forward mode, respectively.
 
-            - ``spec``: Specifies the estimated radiance and differential
-              radiance in primal and forward mode, respectively.
+        Output ``valid`` (``mi.Bool``):
+            Indicates whether the rays intersected a surface, which can be used
+            to compute an alpha channel.
 
-            - ``valid``: Indicates whether the rays intersected a surface,
-              which can be used to compute an alpha channel.
+        Output ``aovs`` (``Sequence[mi.Float]``):
+            Integrators may return one or more arbitrary output variables (AOVs).
+            The implementation has to guarantee that the number of returned AOVs
+            matches the length of self.aov_names().
 
-            - ``aovs``: Integrators may return one or more arbitrary output
-              variables (AOVs). The implementation has to guarantee that the
-              number of returned AOVs matches the length of self.aov_names().
+        Output ``seedray`` / ``state_out`` (``any``):
+            If ``project`` is true, the integrator returns the seed rays to be
+            projected as the third output. The seed rays is a python list of
+            rays and their validity mask. It is possible that no segment can be
+            projected along a light path.
 
-            - ``seedray`` / ``state_out``: If ``project`` is true, the
-              integrator returns the seed rays to be projected as the third
-              output. The seed rays is a python list of rays and their
-              validity mask. It is possible that no segment can be projected
-              along a light path.
-
-              If ``project`` is false, the integrator returns the state
-              vector returned by the primal phase of ``sample()`` as the
-              third output. This is only used by the radiative-backpropagation
-              style integrators.
+            If ``project`` is false, the integrator returns the state vector
+            returned by the primal phase of ``sample()`` as the third output.
+            This is only used by the radiative-backpropagation style
+            integrators.
         """
 
         raise Exception('PSIntegrator does not provide the sample() method. '
@@ -1352,13 +1361,17 @@ def solid_angle_to_area_jacobian(o: mi.Point3f,
     angle (dω) to surface area (dA) when reparameterizing the integration over
     a surface.
 
-    Args:
-        o: Origin point (e.g., shading point).
-        p: Sampled point on the surface.
-        n: Normal at the sampled point.
+    Parameter ``o`` (``mi.Point3f``)
+        Origin point (e.g., shading point).
 
-    Returns:
-        The Jacobian determinant :math:`|\\partial A / \\partial \\omega| = |\\mathbf{n} \\cdot \\omega_i| / \\|\\mathbf{p} - \\mathbf{o}\\|^2`
+    Parameter ``p`` (``mi.Point3f``)
+        Sampled point on the surface.
+
+    Parameter ``n`` (``mi.Normal3f``)
+        Normal at the sampled point.
+
+    Output:
+        The Jacobian determinant |∂A/∂ω| = (|dot(n, wi)| / ||p - o||^2)
     """
     d = p - o
     d_squared = dr.squared_norm(d)

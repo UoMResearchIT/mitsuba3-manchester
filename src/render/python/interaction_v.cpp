@@ -42,7 +42,6 @@ MI_PY_EXPORT(SurfaceInteraction) {
         .def_field(SurfaceInteraction3f, shape,         "shape"_a.none(), D(SurfaceInteraction, shape))
         .def_field(SurfaceInteraction3f, uv,            D(SurfaceInteraction, uv))
         .def_field(SurfaceInteraction3f, sh_frame,      D(SurfaceInteraction, sh_frame))
-        .def_field(SurfaceInteraction3f, frame_flipped, D(SurfaceInteraction, frame_flipped))
         .def_field(SurfaceInteraction3f, dp_du,         D(SurfaceInteraction, dp_du))
         .def_field(SurfaceInteraction3f, dp_dv,         D(SurfaceInteraction, dp_dv))
         .def_field(SurfaceInteraction3f, dn_du,         D(SurfaceInteraction, dn_du))
@@ -51,23 +50,23 @@ MI_PY_EXPORT(SurfaceInteraction) {
         .def_field(SurfaceInteraction3f, duv_dy,        D(SurfaceInteraction, duv_dy))
         .def_field(SurfaceInteraction3f, wi,            D(SurfaceInteraction, wi))
         .def_field(SurfaceInteraction3f, prim_index,    D(SurfaceInteraction, prim_index))
-        .def_field(SurfaceInteraction3f, instance_index, D(SurfaceInteraction, instance_index))
+        .def_field(SurfaceInteraction3f, instance,      "instance"_a.none(), D(SurfaceInteraction, instance))
 
         // Methods
         .def(nb::init<>(), D(SurfaceInteraction, SurfaceInteraction))
         .def(nb::init<const SurfaceInteraction3f &>(), "Copy constructor")
         .def(nb::init<const PositionSample3f &, const Wavelength &>(), "ps"_a,
             "wavelengths"_a, D(SurfaceInteraction, SurfaceInteraction))
+        .def("initialize_sh_frame", &SurfaceInteraction3f::initialize_sh_frame,
+            D(SurfaceInteraction, initialize_sh_frame))
         .def("to_world", &SurfaceInteraction3f::to_world, "v"_a, D(SurfaceInteraction, to_world))
         .def("to_local", &SurfaceInteraction3f::to_local, "v"_a, D(SurfaceInteraction, to_local))
-        .def("to_world_mueller", &SurfaceInteraction3f::to_world_mueller,
-            "M_local"_a, "in_forward_local"_a, "out_forward_local"_a,
-            D(SurfaceInteraction, to_world_mueller))
-        .def("to_local_mueller", &SurfaceInteraction3f::to_local_mueller,
-            "M_world"_a, "in_forward_world"_a, "out_forward_world"_a,
-            D(SurfaceInteraction, to_local_mueller))
+        .def("to_world_mueller", &SurfaceInteraction3f::to_world_mueller, "M_local"_a,
+            "wi_local"_a, "wo_local"_a, D(SurfaceInteraction, to_world_mueller))
+        .def("to_local_mueller", &SurfaceInteraction3f::to_local_mueller, "M_world"_a,
+            "wi_world"_a, "wo_world"_a, D(SurfaceInteraction, to_local_mueller))
         .def("emitter", &SurfaceInteraction3f::emitter, D(SurfaceInteraction, emitter),
-            "scene"_a, "active"_a = true, "visibility_mask"_a = +RayMask::All)
+            "scene"_a, "active"_a = true)
         .def("is_sensor", &SurfaceInteraction3f::is_sensor, D(SurfaceInteraction, is_sensor))
         .def("is_medium_transition", &SurfaceInteraction3f::is_medium_transition,
             D(SurfaceInteraction, is_medium_transition))
@@ -93,8 +92,8 @@ MI_PY_EXPORT(SurfaceInteraction) {
         .def_repr(SurfaceInteraction3f);
 
     MI_PY_DRJIT_STRUCT(si, SurfaceInteraction3f, t, time, wavelengths, p, n,
-                       shape, uv, sh_frame, frame_flipped, dp_du, dp_dv, dn_du,
-                       dn_dv, duv_dx, duv_dy, wi, prim_index, instance_index)
+                       shape, uv, sh_frame, dp_du, dp_dv, dn_du, dn_dv, duv_dx,
+                       duv_dy, wi, prim_index, instance)
 }
 
 MI_PY_EXPORT(MediumInteraction) {
@@ -138,16 +137,25 @@ MI_PY_EXPORT(PreliminaryIntersection) {
         .def_field(PreliminaryIntersection3f, t,           D(PreliminaryIntersection, t))
         .def_field(PreliminaryIntersection3f, prim_uv,     D(PreliminaryIntersection, prim_uv))
         .def_field(PreliminaryIntersection3f, prim_index,  D(PreliminaryIntersection, prim_index))
-        .def_field(PreliminaryIntersection3f, instance_index, D(PreliminaryIntersection, instance_index))
+        .def_field(PreliminaryIntersection3f, shape_index, D(PreliminaryIntersection, shape_index))
         .def_field(PreliminaryIntersection3f, shape,       D(PreliminaryIntersection, shape))
+        .def_field(PreliminaryIntersection3f, instance,    D(PreliminaryIntersection, instance))
 
         // Methods
         .def(nb::init<>(), D(PreliminaryIntersection, PreliminaryIntersection))
         .def(nb::init<const PreliminaryIntersection3f &>(), "Copy constructor")
         .def("is_valid", &PreliminaryIntersection3f::is_valid, D(PreliminaryIntersection, is_valid))
+        .def("compute_surface_interaction",
+           // GCC 13.2.0 miscompiles the bindings below unless its wrapped in a lambda
+           [](PreliminaryIntersection3f& pi, const Ray3f &&ray, uint32_t ray_flags, Mask active) {
+               return pi.compute_surface_interaction(
+                       std::forward<const Ray3f&>(ray), ray_flags, active);
+           },
+           D(PreliminaryIntersection, compute_surface_interaction),
+           "ray"_a, "ray_flags"_a = +RayFlags::All, "active"_a = true)
         .def("zero_", &PreliminaryIntersection3f::zero_, D(PreliminaryIntersection, zero))
         .def_repr(PreliminaryIntersection3f);
 
     MI_PY_DRJIT_STRUCT(pi, PreliminaryIntersection3f, valid, t, prim_uv,
-                       prim_index, instance_index, shape);
+                       prim_index, shape_index, shape, instance);
 }

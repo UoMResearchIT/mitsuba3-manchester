@@ -9,7 +9,7 @@
 NAMESPACE_BEGIN(mitsuba)
 
 // =======================================================================
-// Data types for RGB data
+//! @{ \name Data types for RGB data
 // =======================================================================
 
 template <typename Value_, size_t Size_ = 3>
@@ -37,10 +37,11 @@ struct Color : dr::StaticArrayImpl<Value_, Size_, false, Color<Value_, Size_>> {
     DRJIT_ARRAY_IMPORT(Color, Base)
 };
 
+//! @}
 // =======================================================================
 
 // =======================================================================
-// Data types for spectral quantities with sampled wavelengths
+//! @{ \name Data types for spectral quantities with sampled wavelengths
 // =======================================================================
 
 template <typename Value_, size_t Size_ = 4>
@@ -94,10 +95,11 @@ template <typename T> auto depolarizer(const T &spectrum = T(1)) {
     }
 }
 
+//! @}
 // =======================================================================
 
 // =======================================================================
-// Masking support for color and spectrum data types
+//! @{ \name Masking support for color and spectrum data types
 // =======================================================================
 
 template <typename Value_, size_t Size_>
@@ -118,6 +120,7 @@ struct Spectrum<dr::detail::MaskedArray<Value_>, Size_>
     Spectrum(const Base &b) : Base(b) { }
 };
 
+//! @}
 // =======================================================================
 
 #define MI_CIE_MIN           360.f
@@ -154,8 +157,8 @@ const float d65_table[MI_CIE_SAMPLES] = {
 #define MI_CIE_D65_NORMALIZATION (1.0 / 98.99741751876255)
 
 /**
- * Struct carrying color space tables with fits for `cie1931_xyz` and
- * `cie1931_y` as well as corresponding precomputed ITU-R Rec. BT.709 linear
+ * \brief Struct carrying color space tables with fits for \ref cie1931_xyz and
+ * \ref cie1931_y as well as corresponding precomputed ITU-R Rec. BT.709 linear
  * RGB tables.
  */
 NAMESPACE_BEGIN(detail)
@@ -234,7 +237,7 @@ extern MI_EXPORT_LIB void color_management_static_initialization(bool cuda, bool
 extern MI_EXPORT_LIB void color_management_static_shutdown();
 
 /**
- * Evaluate the CIE 1931 XYZ color matching functions given a wavelength
+ * \brief Evaluate the CIE 1931 XYZ color matching functions given a wavelength
  * in nanometers
  */
 template <typename Float, typename Result = Color<Float, 3>>
@@ -270,7 +273,7 @@ Result cie1931_xyz(Float wavelength, dr::mask_t<Float> active = true) {
 }
 
 /**
- * Evaluate the CIE 1931 Y color matching function given a wavelength in
+ * \brief Evaluate the CIE 1931 Y color matching function given a wavelength in
  * nanometers
  */
 template <typename Float>
@@ -300,7 +303,7 @@ Float cie1931_y(Float wavelength, dr::mask_t<Float> active = true) {
 }
 
 /**
- * Evaluate the CIE D65 illuminant spectrum given a wavelength in
+ * \brief Evaluate the CIE D65 illuminant spectrum given a wavelength in
  * nanometers, normalized to ensures that it integrates to a luminance of 1.0.
  */
 template <typename Float>
@@ -331,7 +334,7 @@ Float cie_d65(Float wavelength, dr::mask_t<Float> active = true) {
     return dr::select(active, v, Float(0.f));
 }
 /**
- * Evaluate the ITU-R Rec. BT.709 linear RGB color matching functions
+ * \brief Evaluate the ITU-R Rec. BT.709 linear RGB color matching functions
  * given a wavelength in nanometers
  */
 template <typename Float, typename Result = Color<Float, 3>>
@@ -367,7 +370,7 @@ Result linear_rgb_rec(Float wavelength, dr::mask_t<Float> active = true) {
 }
 
 /**
- * Spectral responses to XYZ normalized according to the CIE curves to
+ * \brief Spectral responses to XYZ normalized according to the CIE curves to
  * ensure that a unit-valued spectrum integrates to a luminance of 1.0.
  */
 template <typename Float, size_t Size>
@@ -382,7 +385,7 @@ Color<Float, 3> spectrum_to_xyz(const Spectrum<Float, Size> &value,
 }
 
 /**
- * Spectral responses to sRGB normalized according to the CIE curves to
+ * \brief Spectral responses to sRGB normalized according to the CIE curves to
  * ensure that a unit-valued spectrum integrates to a luminance of 1.0.
  */
 template <typename Float, size_t Size>
@@ -442,8 +445,8 @@ template <typename Float> Float luminance(const Color<Float, 3> &c) {
  * Importance sample a "importance spectrum" that concentrates the computation
  * on wavelengths that are relevant for rendering of RGB data
  *
- * Based on the technique of Radziszewski et al.
- * :cite:`Radziszewski2009Spectral`
+ * Based on "An Improved Technique for Full Spectral Rendering"
+ * by Radziszewski, Boryczko, and Alda
  *
  * Returns a tuple with the sampled wavelength and inverse PDF
  */
@@ -460,7 +463,7 @@ std::pair<Value, Value> sample_rgb_spectrum(const Value &sample) {
 }
 
 /**
- * PDF for the `sample_rgb_spectrum` strategy.
+ * PDF for the \ref sample_rgb_spectrum strategy.
  * It is valid to call this function for a single wavelength (Float), a set
  * of wavelengths (Spectrumf), a packet of wavelengths (SpectrumfP), etc. In all
  * cases, the PDF is returned per wavelength.
@@ -485,52 +488,56 @@ std::pair<wavelength_t<Spectrum>, Spectrum> sample_wavelength(Float sample) {
 }
 
 /**
- * Read a spectral power distribution from an ASCII file.
+ * \brief Read a spectral power distribution from an ASCII file.
  *
  * The data should be arranged as follows:
  * The file should contain a single measurement per line, with the corresponding
  * wavelength in nanometers and the measured value separated by a space.
  * Comments are allowed.
  *
- * Args:
- *     filename: Path of the file to be read
+ * \param path
+ *     Path of the file to be read
+ * \param wavelengths
+ *     Array that will be loaded with the wavelengths stored in the file
+ * \param values
+ *     Array that will be loaded with the values stored in the file
  */
 template <typename Scalar>
-MI_EXPORT_LIB void spectrum_from_file(const fs::path &filename,
+MI_EXPORT_LIB void spectrum_from_file(const fs::path &path,
                                       std::vector<Scalar> &wavelengths,
                                       std::vector<Scalar> &values);
 
 /**
- * Write a spectral power distribution to an ASCII file.
+ * \brief Write a spectral power distribution to an ASCII file.
  *
- * The format is identical to that parsed by `spectrum_from_file()`.
+ * The format is identical to that parsed by \ref spectrum_from_file().
  *
- * Args:
- *     filename: Path to the file to be written to
- *
- *     wavelengths: Array with the wavelengths to be stored in the file
- *
- *     values: Array with the values to be stored in the file
+ * \param path
+ *     Path to the file to be written to
+ * \param wavelengths
+ *     Array with the wavelengths to be stored in the file
+ * \param values
+ *     Array with the values to be stored in the file
  */
 template <typename Scalar>
-MI_EXPORT_LIB void spectrum_to_file(const fs::path &filename,
+MI_EXPORT_LIB void spectrum_to_file(const fs::path &path,
                                     const std::vector<Scalar> &wavelengths,
                                     const std::vector<Scalar> &values);
 
 /**
- * Transform a spectrum into a set of equivalent sRGB coefficients
+ * \brief Transform a spectrum into a set of equivalent sRGB coefficients
  *
  * When ``bounded`` is set, the resulting sRGB coefficients will be at most 1.0.
  * In any case, sRGB coefficients will be clamped to 0 if they are negative.
  *
- * Args:
- *     wavelengths: Array with the wavelengths of the spectrum
- *
- *     values: Array with the values at the previously specified wavelengths
- *
- *     bounded: Boolean that controls if clamping is required. (default: True)
- *
- *     d65: Should the D65 illuminant be included in the integration. (default: False)
+ * \param wavelengths
+ *     Array with the wavelengths of the spectrum
+ * \param values
+ *     Array with the values at the previously specified wavelengths
+ * \param bounded
+ *     Boolean that controls if clamping is required. (default: True)
+ * \param d65
+ *     Should the D65 illuminant be included in the integration. (default: False)
  */
 template <typename Scalar>
 MI_EXPORT_LIB Color<Scalar, 3>

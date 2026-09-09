@@ -10,7 +10,7 @@ class BasicPRBIntegrator(RBIntegrator):
     .. _integrator-prb_basic:
 
     Basic Path Replay Backpropagation (:monosp:`prb_basic`)
-    -------------------------------------------------------
+    ---------------------------------------------------------
 
     .. pluginparameters::
 
@@ -20,6 +20,10 @@ class BasicPRBIntegrator(RBIntegrator):
          corresponds to :math:`\infty`). A value of 1 will only render directly
          visible light sources. 2 will lead to single-bounce (direct-only)
          illumination, and so on. (Default: 6)
+
+     * - hide_emitters
+       - |bool|
+       - Hide directly visible emitters. (Default: no, i.e. |false|)
 
     Basic Path Replay Backpropagation-style integrator *without* next event
     estimation, multiple importance sampling, Russian Roulette, and
@@ -59,7 +63,7 @@ class BasicPRBIntegrator(RBIntegrator):
                **kwargs # Absorbs unused arguments
     ) -> Tuple[mi.Spectrum, mi.Bool, List[mi.Float], mi.Spectrum]:
         """
-        See `ADIntegrator.sample` for a description of this interface and
+        See ``ADIntegrator.sample()`` for a description of this interface and
         the role of the various parameters and return values.
         """
 
@@ -80,13 +84,20 @@ class BasicPRBIntegrator(RBIntegrator):
         β = mi.Spectrum(1)                               # Path throughput weight
         active = mi.Bool(active)                         # Active SIMD lanes
         pi_prev = dr.zeros(mi.PreliminaryIntersection3f) # Interaction of the previous bounce
-
-        # The camera mask hides emitters marked as invisible
         pi = scene.ray_intersect_preliminary(ray,        # Current interaction
                                              coherent=True,
                                              reorder=False,
-                                             active=active,
-                                             visibility_mask=mi.RayMask.Camera)
+                                             active=active)
+
+        # ---------------------- Hide area emitters ----------------------
+
+        if dr.hint(self.hide_emitters, mode='scalar'):
+            # Did we hit an area emitter? If so, skip all area emitters along this ray
+            skip_emitters = pi.is_valid() & (pi.shape.emitter() != None) & active
+            si_skip = pi.compute_surface_interaction(ray, mi.RayFlags.Minimal, skip_emitters)
+            ray_skip = si_skip.spawn_ray(ray.d)
+            pi_after_skip = self.skip_area_emitters(scene, ray_skip, True, skip_emitters)
+            pi[skip_emitters] = pi_after_skip
 
         while dr.hint(active,
                       max_iterations=self.max_depth,
@@ -97,13 +108,12 @@ class BasicPRBIntegrator(RBIntegrator):
             # from differentiable shape parameters (position, normals, etc.)
             # In primal mode, this is just an ordinary ray tracing operation.
             with dr.resume_grad(when=not primal):
-                si = scene.compute_surface_interaction(ray, pi, ray_flags=mi.RayFlags.Default)
+                si = pi.compute_surface_interaction(ray, ray_flags=mi.RayFlags.All)
 
                 # Recompute an attached si.wi to account for motion of the
                 # previous surface interaction
                 if (not primal) & mi.Bool(depth >= 1):
-                    si_prev = scene.compute_surface_interaction(
-                        ray_prev, pi_prev, ray_flags=mi.RayFlags.Default)
+                    si_prev = pi_prev.compute_surface_interaction(ray_prev, ray_flags=mi.RayFlags.All)
                     # We should not account for the current interaction's motion
                     si_detach = dr.detach(si)
                     wi_global = dr.normalize(si_prev.p - si_detach.p)
@@ -112,15 +122,13 @@ class BasicPRBIntegrator(RBIntegrator):
 
             # ---------------------- Direct emission ----------------------
 
-            # Ray mask of the trace that produced si. The emitter lookup uses
-            # it to hide an invisible environment from escaped depth-0 rays.
-            ray_mask = dr.select(depth == 0, mi.RayMask.Camera,
-                                 mi.RayMask.All)
+            # Hide the environment emitter if necessary
+            if dr.hint(self.hide_emitters, mode='scalar'):
+                active_next &= ~((depth == 0) & ~si.is_valid())
 
             # Differentiable evaluation of intersected emitter / envmap
             with dr.resume_grad(when=not primal):
-                emitter = si.emitter(scene, visibility_mask=ray_mask)
-                Le = β * emitter.eval(si, active_next)
+                Le = β * si.emitter(scene).eval(si, active_next)
 
             # Should we continue tracing to reach one more vertex?
             active_next &= (depth + 1 < self.max_depth) & si.is_valid()
@@ -155,9 +163,9 @@ class BasicPRBIntegrator(RBIntegrator):
             # ------------------ Differential phase only ------------------
 
             if dr.hint(not primal, mode='scalar'):
-                si_next = scene.compute_surface_interaction(
-                    ray_next, pi_next, ray_flags=mi.RayFlags.Default,
-                    active=active_next)
+                si_next = pi_next.compute_surface_interaction(ray_next,
+                                                              ray_flags=mi.RayFlags.All,
+                                                              active=active_next)
 
                 with dr.resume_grad():
                     # If the current interaction point is moving, we need

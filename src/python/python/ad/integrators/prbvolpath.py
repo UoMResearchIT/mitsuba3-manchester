@@ -17,7 +17,7 @@ class PRBVolpathIntegrator(RBIntegrator):
     .. _integrator-prbvolpath:
 
     Path Replay Backpropagation Volumetric Integrator (:monosp:`prbvolpath`)
-    ------------------------------------------------------------------------
+    -------------------------------------------------------------------------
 
     .. pluginparameters::
 
@@ -34,6 +34,10 @@ class PRBVolpathIntegrator(RBIntegrator):
          the *russian roulette* path termination criterion. For example, if set to
          1, then path generation many randomly cease after encountering directly
          visible surfaces. (Default: 5)
+
+     * - hide_emitters
+       - |bool|
+       - Hide directly visible emitters. (Default: no, i.e. |false|)
 
 
     This class implements a volumetric Path Replay Backpropagation (PRB) integrator
@@ -144,11 +148,6 @@ class PRBVolpathIntegrator(RBIntegrator):
             active &= (sampler.next_1d(active) < q) | ~perform_rr
             throughput[perform_rr] = throughput * dr.rcp(q)
 
-            # Ray mask of the current path segment. Depth-0 segments use the
-            # camera mask, which hides emitters marked as invisible.
-            ray_mask = dr.select(depth == 0, mi.RayMask.Camera,
-                                 mi.RayMask.All)
-
             active_medium = active & (medium != None)
             active_surface = active & ~active_medium
 
@@ -162,9 +161,7 @@ class PRBVolpathIntegrator(RBIntegrator):
 
                 ray.maxt[active_medium & medium.is_homogeneous() & mei.is_valid()] = mei.t
                 intersect = needs_intersection & active_medium
-                si[intersect] = scene.ray_intersect(
-                    ray, mi.RayFlags.Default, False, intersect,
-                    visibility_mask=ray_mask)
+                si[intersect] = scene.ray_intersect(ray, intersect)
 
                 needs_intersection &= ~active_medium
                 mei.t[active_medium & (si.t < mei.t)] = dr.inf
@@ -214,18 +211,31 @@ class PRBVolpathIntegrator(RBIntegrator):
 
                 active_surface |= escaped_medium
                 intersect = active_surface & needs_intersection
-                si[intersect] = scene.ray_intersect(
-                    ray, mi.RayFlags.Default, False, intersect,
-                    visibility_mask=ray_mask)
+                si[intersect] = scene.ray_intersect(ray, intersect)
+
+                # ---------------------- Hide area emitters ----------------------
+
+                if dr.hint(self.hide_emitters, mode='scalar'):
+                    # Are we on the first segment and did we hit an area emitter?
+                    # If so, skip all area emitters along this ray
+                    skip_emitters = (
+                        si.is_valid() &
+                        (si.shape.emitter() != None) &
+                        (depth == 0) &
+                        intersect
+                    )
+
+                    ray_skip = si.spawn_ray(ray.d)
+                    pi = self.skip_area_emitters(scene, ray_skip, True, skip_emitters)
+                    si_after_skip = pi.compute_surface_interaction(ray, mi.RayFlags.All, skip_emitters)
+                    si[skip_emitters] = si_after_skip
 
                 # ----------------- Intersection with emitters -----------------
 
                 ray_from_camera = active_surface & (depth == 0)
                 count_direct = ray_from_camera | specular_chain
-                # Reusing the trace's ray mask hides an invisible environment
-                # from escaped depth-0 rays
-                emitter = si.emitter(scene, visibility_mask=ray_mask)
-                active_e = active_surface & (emitter != None)
+                emitter = si.emitter(scene)
+                active_e = active_surface & (emitter != None) & ~((depth == 0) & self.hide_emitters)
 
                 # Get the PDF of sampling this emitter using next event estimation
                 ds = mi.DirectionSample3f(scene, si, last_scatter_event)

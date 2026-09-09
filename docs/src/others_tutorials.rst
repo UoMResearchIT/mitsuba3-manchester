@@ -1,5 +1,3 @@
-.. _sec-other-tutos:
-
 .. image:: ../../resources/data/docs/images/banners/banner_02.jpg
     :width: 100%
     :align: center

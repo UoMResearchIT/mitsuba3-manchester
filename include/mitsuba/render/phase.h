@@ -9,7 +9,7 @@
 NAMESPACE_BEGIN(mitsuba)
 
 /**
- * This enumeration is used to classify phase functions into different types,
+ * \brief This enumeration is used to classify phase functions into different types,
  * i.e. into isotropic, anisotropic and microflake phase functions.
  *
  * This can be used to optimize implementations to for example have less overhead
@@ -25,7 +25,7 @@ enum class PhaseFunctionFlags : uint32_t {
 MI_DECLARE_ENUM_OPERATORS(PhaseFunctionFlags)
 
 /**
- * Context data structure for phase function evaluation and sampling
+ * \brief Context data structure for phase function evaluation and sampling
  *
  * Phase function models in Mitsuba can be queried and sampled using a variety of
  * different modes. Using this data structure, a rendering algorithm can indicate whether
@@ -33,13 +33,14 @@ MI_DECLARE_ENUM_OPERATORS(PhaseFunctionFlags)
  *
  * The context further holds a pointer to a sampler object, in case
  * the evaluation or sampling functions need additional random numbers.
+ *
  */
 MI_VARIANT
 struct MI_EXPORT_LIB PhaseFunctionContext {
     MI_IMPORT_TYPES(Sampler);
 
     // =============================================================
-    // Fields
+    //! @{ \name Fields
     // =============================================================
 
     /// Transported mode (radiance or importance)
@@ -48,21 +49,21 @@ struct MI_EXPORT_LIB PhaseFunctionContext {
     /// Sampler object
     Sampler *sampler = nullptr;
 
-    /**
+    /*
      * Bit mask for requested phase function component types to be
      * sampled/evaluated.
-     * The default value (equal to `PhaseFunctionFlags.Isotropic` |
-     * `PhaseFunctionFlags.Anisotropic` | `PhaseFunctionFlags.Microflake`)
-     * enables all components.
+     * The default value (equal to \ref PhaseFunctionFlags::All) enables all
+     * components.
      */
     uint32_t type_mask = (uint32_t) 0x7u;
 
-    /**
+    /*
      * Integer value of requested phase function component index to be
      * sampled/evaluated.
      */
     uint32_t component = (uint32_t) -1;
 
+    //! @}
     // =============================================================
 
     PhaseFunctionContext() = default;
@@ -77,7 +78,7 @@ struct MI_EXPORT_LIB PhaseFunctionContext {
           component(component) { }
 
     /**
-     * Reverse the direction of light transport in the record
+     * \brief Reverse the direction of light transport in the record
      *
      * This updates the transport mode (radiance to importance and vice versa).
      */
@@ -95,7 +96,7 @@ struct MI_EXPORT_LIB PhaseFunctionContext {
 };
 
 /**
- * Abstract phase function base-class.
+ * \brief Abstract phase function base-class.
  *
  * This class provides an abstract interface to all Phase function plugins in
  * Mitsuba. It exposes functions for evaluating and sampling the model.
@@ -107,49 +108,52 @@ public:
     MI_IMPORT_TYPES(PhaseFunctionContext);
 
     /**
-     * Importance sample the phase function model
+     * \brief Importance sample the phase function model
      *
      * The function returns a sampled direction.
      *
-     * Args:
-     *     ctx: A phase function sampling context, contains information
-     *         about the transport mode
+     * \param ctx
+     *     A phase function sampling context, contains information
+     *     about the transport mode
      *
-     *     mi: A medium interaction data structure describing the underlying
-     *         medium position. The incident direction is obtained from
-     *         the field ``mi.wi``.
+     * \param mi
+     *     A medium interaction data structure describing the underlying
+     *     medium position. The incident direction is obtained from
+     *     the field <tt>mi.wi</tt>.
      *
-     *     sample1: A uniformly distributed sample on :math:`[0,1]`. It is used
-     *         to select the phase function component in multi-component models.
+     * \param sample1
+     *     A uniformly distributed sample on \f$[0,1]\f$. It is used
+     *     to select the phase function component in multi-component models.
      *
-     *     sample2: A uniformly distributed sample on :math:`[0,1]^2`. It is
-     *         used to generate the sampled direction.
+     * \param sample2
+     *     A uniformly distributed sample on \f$[0,1]^2\f$. It is
+     *     used to generate the sampled direction.
      *
-     * Returns:
-     *     A sampled direction ``wo`` and its corresponding weight and PDF
+     * \return A sampled direction wo and its corresponding weight and PDF
      */
     virtual std::tuple<Vector3f, Spectrum, Float> sample(const PhaseFunctionContext &ctx,
                                                          const MediumInteraction3f &mi,
                                                          Float sample1, const Point2f &sample2,
                                                          Mask active = true) const = 0;
     /**
-     * Evaluates the phase function model value and PDF
+     * \brief Evaluates the phase function model value and PDF
      *
      * The function returns the value (which often equals the PDF) of the phase
      * function in the query direction.
      *
-     * Args:
-     *     ctx: A phase function sampling context, contains information
-     *         about the transport mode
+     * \param ctx
+     *     A phase function sampling context, contains information
+     *     about the transport mode
      *
-     *     mi: A medium interaction data structure describing the underlying
-     *         medium position. The incident direction is obtained from
-     *         the field ``mi.wi``.
+     * \param mi
+     *     A medium interaction data structure describing the underlying
+     *     medium position. The incident direction is obtained from
+     *     the field <tt>mi.wi</tt>.
      *
-     *     wo: An outgoing direction to evaluate.
+     * \param wo
+     *     An outgoing direction to evaluate.
      *
-     * Returns:
-     *     The value and the sampling PDF of the phase function in direction ``wo``
+     * \return The value and the sampling PDF of the phase function in direction wo
      */
     virtual std::pair<Spectrum, Float> eval_pdf(const PhaseFunctionContext &ctx,
                                                 const MediumInteraction3f &mi,
@@ -157,19 +161,18 @@ public:
                                                 Mask active = true) const = 0;
 
     /**
-     * Returns the microflake projected area
+     * \brief Returns the microflake projected area
      *
      * The function returns the projected area of the microflake distribution defining the phase
      * function. For non-microflake phase functions, e.g. isotropic or Henyey-Greenstein, this
      * should return a value of 1.
      *
-     * Args:
-     *     mi: A medium interaction data structure describing the underlying
-     *         medium position. The incident direction is obtained from
-     *         the field ``mi.wi``.
+     * \param mi
+     *     A medium interaction data structure describing the underlying
+     *     medium position. The incident direction is obtained from
+     *     the field <tt>mi.wi</tt>.
      *
-     * Returns:
-     *     The projected area in direction ``mi.wi`` at position ``mi.p``
+     * \return The projected area in direction <tt>mi.wi</tt> at position <tt>mi.p</tt>
      */
     virtual Float projected_area(const MediumInteraction3f & /* mi */, Mask /* active */ = true) const {
         return 1.f;
@@ -188,8 +191,8 @@ public:
     }
 
     /// Number of components this phase function is comprised of.
-    uint32_t component_count(Mask /*active*/ = true) const {
-        return (uint32_t) m_components.size();
+    size_t component_count(Mask /*active*/ = true) const {
+        return m_components.size();
     }
 
     /// Return a human-readable representation of the phase function
@@ -201,6 +204,7 @@ public:
     /// Set type of phase function
     void set_flags(uint32_t flags) { m_flags = flags; }
 
+    //! @}
     // -----------------------------------------------------------------------
 
     MI_DECLARE_PLUGIN_BASE_CLASS(PhaseFunction)
@@ -230,13 +234,14 @@ std::ostream &operator<<(std::ostream &os, const PhaseFunctionContext<Float, Spe
     return os;
 }
 
+//! @}
 // -----------------------------------------------------------------------
 
 MI_EXTERN_CLASS(PhaseFunction)
 NAMESPACE_END(mitsuba)
 
 // -----------------------------------------------------------------------
-// Enables vectorized calls on Dr.Jit arrays of phase functions
+//! @{ \name Enables vectorized calls on Dr.Jit arrays of phase functions
 // -----------------------------------------------------------------------
 
 DRJIT_CALL_TEMPLATE_BEGIN(mitsuba::PhaseFunction)
@@ -248,4 +253,5 @@ DRJIT_CALL_TEMPLATE_BEGIN(mitsuba::PhaseFunction)
     DRJIT_CALL_GETTER(component_count)
 DRJIT_CALL_END()
 
+//! @}
 // -----------------------------------------------------------------------

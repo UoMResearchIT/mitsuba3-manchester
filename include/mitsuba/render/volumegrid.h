@@ -11,10 +11,10 @@
 NAMESPACE_BEGIN(mitsuba)
 
 /**
- * Class to read and write 3D volume grids
+ * \brief Class to read and write 3D volume grids
  *
  * This class handles loading of volumes in the Mitsuba volume file format
- * Please see the documentation of gridvolume (``grid3d.cpp``) for the file format
+ * Please see the documentation of gridvolume (grid3d.cpp) for the file format
  * specification.
  */
 template <typename Float, typename Spectrum>
@@ -30,18 +30,18 @@ public:
     }
 
     /**
-     * Load a VolumeGrid from a given filename
+     * \brief Load a VolumeGrid from a given filename
      *
-     * Args:
-     *     path: Name of the file to be loaded
+     * \param path
+     *    Name of the file to be loaded
      */
     VolumeGrid(const fs::path &path);
 
     /**
-     * Load a VolumeGrid from an arbitrary stream data source
+     * \brief Load a VolumeGrid from an arbitrary stream data source
      *
-     * Args:
-     *     stream: Pointer to an arbitrary stream data source
+     * \param stream
+     *    Pointer to an arbitrary stream data source
      */
     VolumeGrid(Stream *stream);
 
@@ -63,7 +63,7 @@ public:
     ScalarFloat max() const { return m_max; }
 
     /**
-     * Return the precomputed maximum over the volume grid per channel
+     * \brief Return the precomputed maximum over the volume grid per channel
      *
      * Pointer allocation/deallocation must be performed by the caller.
      */
@@ -73,7 +73,7 @@ public:
     void set_max(ScalarFloat max) { m_max = max; }
 
     /**
-     * Set the precomputed maximum over the volume grid per channel
+     * \brief Set the precomputed maximum over the volume grid per channel
      *
      * Pointer allocation/deallocation must be performed by the caller.
      */
@@ -82,25 +82,25 @@ public:
             m_max_per_channel[i] = max[i];
     }
 
-    /// Return the number of bytes of storage used per voxel
+    /// Return the number bytes of storage used per voxel
     size_t bytes_per_voxel() const { return sizeof(ScalarFloat) * channel_count(); }
 
     /// Return the volume grid size in bytes (excluding metadata)
     size_t buffer_size() const { return dr::prod(m_size) * bytes_per_voxel(); }
 
     /**
-     * Write an encoded form of the volume grid to a binary volume file
+     * Write an encoded form of the bitmap to a binary volume file
      *
-     * Args:
-     *     path: Target file name (expected to end in ".vol")
+     * \param path
+     *    Target file name (expected to end in ".vol")
      */
     void write(const fs::path &path) const;
 
     /**
      * Write an encoded form of the volume grid to a stream
      *
-     * Args:
-     *     stream: Target stream that will receive the encoded output
+     * \param stream
+     *    Target stream that will receive the encoded output
      */
     void write(Stream *stream) const;
 

@@ -68,11 +68,19 @@ def test03_management_of_properties(variant_scalar_rgb):
     fill_properties(p)
     # Existence
     assert 'prop_1' in p
-    assert 'random_unset_property' not in p
+    # Test deprecated method (with warning suppression)
+    import warnings
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", DeprecationWarning)
+        assert p.has_property('prop_1')
+        assert not p.has_property('random_unset_property')
 
-    # Removal
-    del p['prop_2']
-    assert 'prop_2' not in p
+    # Removal - test both old and new ways
+    # Old way (deprecated)
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", DeprecationWarning)
+        assert p.remove_property('prop_2')
+        assert not p.has_property('prop_2')
 
     # New way (Pythonic)
     p['prop_2'] = 'restored'  # Restore for next test
@@ -283,8 +291,9 @@ def test15_plugin_manager_plugin_type(variant_scalar_rgb):
 
 
 def test16_dictionary_like_interface(variant_scalar_rgb):
-    """Test dictionary-like methods."""
+    """Test new dictionary-like methods and deprecation warnings"""
     from drjit.scalar import Array3f
+    import warnings
 
     p = mi.Properties()
     p['name'] = 'test'
@@ -314,10 +323,21 @@ def test16_dictionary_like_interface(variant_scalar_rgb):
         assert key in expected_keys
         assert dr.all(p[key] == value)
 
-    assert 'name' in p
-    assert 'missing' not in p
-    del p['flag']
-    assert 'flag' not in p
+    # Test that deprecated methods show warnings
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter("always")
+
+        # These should trigger deprecation warnings
+        _ = p.has_property('name')
+        _ = p.property_names()
+        p.remove_property('flag')
+
+        # Verify we got deprecation warnings
+        assert len(w) == 3
+        assert all(issubclass(warning.category, DeprecationWarning) for warning in w)
+        assert 'has_property() is deprecated' in str(w[0].message)
+        assert 'property_names() is deprecated' in str(w[1].message)
+        assert 'remove_property() is deprecated' in str(w[2].message)
 
 def test17_insertion_order_with_deletion():
     """Test that Properties maintains insertion order even after deletion"""

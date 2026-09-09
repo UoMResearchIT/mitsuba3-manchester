@@ -7,7 +7,7 @@
 NAMESPACE_BEGIN(mitsuba)
 
 // =============================================================
-// Color mode traits
+//! @{ \name Color mode traits
 // =============================================================
 
 NAMESPACE_BEGIN(detail)
@@ -78,6 +78,7 @@ template <typename T> using scalar_spectrum_t = typename detail::spectrum_traits
 template <typename T> using wavelength_t = typename detail::spectrum_traits<T>::Wavelength;
 template <typename T> using unpolarized_spectrum_t = typename detail::spectrum_traits<T>::Unpolarized;
 
+//! @}
 // =============================================================
 
 NAMESPACE_BEGIN(detail)

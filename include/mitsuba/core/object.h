@@ -8,8 +8,6 @@
 #include <string>
 #include <string_view>
 #include <stdexcept>
-#include <cstdlib>
-#include <cstring>
 #include <drjit/traversable_base.h>
 
 NAMESPACE_BEGIN(mitsuba)
@@ -17,19 +15,17 @@ NAMESPACE_BEGIN(mitsuba)
 template <typename T> using ref = nanobind::ref<T>;
 
 /**
- * Available scene object types
+ * \brief Available scene object types
  *
  * This enumeration lists high-level interfaces that can be implemented
  * by Mitsuba scene objects. The scene loader uses these to ensure
  * that a loaded object matches the expected interface.
  *
- * .. note::
- *
- *    This enum is forward-declared at the beginning of the file to allow
- *    its usage in macros that appear before the full definition.
+ * Note: This enum is forward-declared at the beginning of the file to allow
+ * its usage in macros that appear before the full definition.
  */
 enum class ObjectType : uint32_t {
-    /// The default returned by `Object` subclasses
+    /// The default returned by Object subclasses
     Unknown,
 
     /// The top-level scene object. No subclasses exist
@@ -38,16 +34,16 @@ enum class ObjectType : uint32_t {
     /// A filter used to reconstruct/resample images
     ReconstructionFilter,
 
-    /// Carries out radiance measurements, subclasses `Sensor`
+    /// Carries out radiance measurements, subclasses \ref Sensor
     Sensor,
 
     /// Storage representation of the sensor
     Film,
 
-    /// Emits radiance, subclasses `Emitter`
+    /// Emits radiance, subclasses \ref Emitter
     Emitter,
 
-    /// Generates sample positions and directions, subclasses `Sampler`
+    /// Generates sample positions and directions, subclasses \ref Sampler
     Sampler,
 
     /// Denotes an arbitrary shape (including meshes)
@@ -68,20 +64,19 @@ enum class ObjectType : uint32_t {
     /// A phase function characterizing scattering in volumes
     PhaseFunction,
 
-    /// A rendering algorithm aka. `Integrator`
+    /// A rendering algorithm aka. Integrator
     Integrator
 };
 
 /**
- * Object base class with builtin reference counting
+ * \brief Object base class with builtin reference counting
  *
  * This class (in conjunction with the ``ref`` reference counter) constitutes
  * the foundation of an efficient reference-counted object hierarchy.
  *
  * We use an intrusive reference counting approach to avoid various gnarly
- * issues that arise in combined Python/C++ codebase, see `this page
- * <https://nanobind.readthedocs.io/en/latest/ownership_adv.html>`__ for
- * details.
+ * issues that arise in combined Python/C++ codebase, see the following page for
+ * details: https://nanobind.readthedocs.io/en/latest/ownership_adv.html
  *
  * The counter provided by ``drjit::TraversableBase`` establishes a unified
  * reference count that is consistent across both C++ and Python. It is more
@@ -103,9 +98,9 @@ public:
     Object(Object &&) = default;
 
     /**
-     * Expand the object into a list of sub-objects and return them
+     * \brief Expand the object into a list of sub-objects and return them
      *
-     * In some cases, an `Object` instance is merely a container for a
+     * In some cases, an \ref Object instance is merely a container for a
      * number of sub-objects. In the context of Mitsuba, an example would be a
      * combined sun & sky emitter instantiated via XML, which recursively
      * expands into a separate sun & sky instance. This functionality is
@@ -114,54 +109,51 @@ public:
     virtual std::vector<ref<Object>> expand() const;
 
     /**
-     * Traverse the attributes and object graph of this instance
+     * \brief Traverse the attributes and object graph of this instance
      *
      * Implementing this function enables recursive traversal of C++ scene
      * graphs. It is e.g. used to determine the set of differentiable
      * parameters when using Mitsuba for optimization.
      *
-     * Note:
-     *     The default implementation does nothing.
+     * \remark The default implementation does nothing.
      *
-     * See Also:
-     *     `TraversalCallback`
+     * \sa TraversalCallback
      */
     virtual void traverse(TraversalCallback *cb);
 
     /**
-     * Update internal state after applying changes to parameters
+     * \brief Update internal state after applying changes to parameters
      *
-     * This function should be invoked when attributes (obtained via `traverse`) are modified in some way. The object can then update its
+     * This function should be invoked when attributes (obtained via \ref
+     * traverse) are modified in some way. The object can then update its
      * internal state so that derived quantities are consistent with the
      * change.
      *
-     * Args:
-     *     keys: Optional list of names (obtained via `traverse`) corresponding
-     *         to the attributes that have been modified. Can also be used to
-     *         notify when this function is called from a parent object by adding
-     *         a "parent" key to the list. When empty, the object should assume
-     *         that any attribute might have changed.
+     * \param keys
+     *     Optional list of names (obtained via \ref traverse) corresponding
+     *     to the attributes that have been modified. Can also be used to
+     *     notify when this function is called from a parent object by adding
+     *     a "parent" key to the list. When empty, the object should assume
+     *     that any attribute might have changed.
      *
-     * Note:
-     *     The default implementation does nothing.
+     * \remark The default implementation does nothing.
      *
-     * See Also:
-     *     `TraversalCallback`
+     * \sa TraversalCallback
      */
     virtual void parameters_changed(const std::vector<std::string> &/*keys*/ = {});
 
     /**
-     * Return a human-readable string representation of the object's
+     * \brief Return a human-readable string representation of the object's
      * contents.
      *
      * This function is mainly useful for debugging purposes and should ideally
      * be implemented by all subclasses. The default implementation simply
-     * returns ``MyObject[<address of 'this' pointer>]``, where
-     * ``MyObject`` is the name of the class.
+     * returns <tt>MyObject[<address of 'this' pointer>]</tt>, where
+     * <tt>MyObject</tt> is the name of the class.
      */
     virtual std::string to_string() const;
 
-    /// Return the object type. The default is `ObjectType.Unknown`.
+    /// Return the object type. The default is \ref ObjectType::Unknown.
     virtual ObjectType type() const;
 
     /// Return an identifier of the current instance (or empty if none)
@@ -184,47 +176,46 @@ public:
 };
 
 /**
- * Runtime type information macro for Mitsuba classes
+ * \brief Runtime type information macro for Mitsuba classes
  *
- * This macro associates class name string with `Object` subclasses. This enables
+ * This macro associates class name string with Object subclasses. This enables
  * runtime identification and more helpful log messages.
  *
  * The macro generates:
- * - A static constexpr string ``ClassName`` providing the stringified class name
- * - An override of the virtual `class_name()` method from the `Object` base class
+ * - A static constexpr string `ClassName` providing the stringified class name
+ * - An override of the virtual `class_name()` method from the Object base class
  *
  * Example:
- *
- * .. code-block:: c++
- *
- *     class MyShape : public Shape<Float, Spectrum> {
- *         MI_DECLARE_CLASS(MyShape)
- *         // ... rest of the class implementation
- *     };
+ * \code
+ * class MyShape : public Shape<Float, Spectrum> {
+ *     MI_DECLARE_CLASS(MyShape)
+ *     // ... rest of the class implementation
+ * };
+ * \endcode
  */
 #define MI_DECLARE_CLASS(Name)                                                 \
     static constexpr const char *ClassName = #Name;                            \
     virtual std::string_view class_name() const override { return ClassName; }
 
 /**
- * Macro for declaring plugin base classes with variant support
+ * \brief Macro for declaring plugin base classes with variant support
  *
- * This macro extends ``MI_DECLARE_CLASS()`` to provide additional metadata required
- * for Mitsuba's plugin base classes like (e.g., `BSDF`, `Shape`, `Texture`,
- * `Integrator`).
+ * This macro extends MI_DECLARE_CLASS() to provide additional metadata required
+ * for Mitsuba's plugin base classes like (e.g., BSDF, Shape, Texture,
+ * Integrator).
  *
  * The macro additionally generates:
  *
  * 1. A static constexpr string ``Variant`` identifying the variant name
  *    (e.g., ``scalar_rgb``, ``cuda_ad_rgb``).
  *
- * 2. A static constexpr string ``Domain`` identifying the plugin category.
+ * 2. A static constexpr string `Domain` identifying the plugin category.
  *
  * 3. A static constexpr ``Type`` member that provides the same information
- *    as an `ObjectType` enumeration value.
+ *    as an ObjectType enumeration value.
  *
  * 4. Overrides of the virtual `variant_name()` and ``type()`` method from the
- * `Object` base class.
+ * Object base class.
  */
 #define MI_DECLARE_PLUGIN_BASE_CLASS(Name)                                     \
     MI_DECLARE_CLASS(Name)                                                     \
@@ -249,7 +240,7 @@ namespace detail {
 /// Global to indicate that we are not currently in a class (used by the Logger)
 static constexpr const char *ClassName = nullptr;
 
-/// Turn an `ObjectType` enumeration value into string form
+/// Turn an ObjectType enumeration value into string form
 inline constexpr const char* object_type_name(ObjectType ot) {
     switch (ot) {
         case ObjectType::Scene: return "Scene";
@@ -272,57 +263,32 @@ inline constexpr const char* object_type_name(ObjectType ot) {
 }
 
 /**
- * CRTP base class for JIT-registered objects
+ * \brief CRTP base class for JIT-registered objects
  *
  * This class provides automatic registration/deregistration with Dr.Jit's
  * instance registry for JIT-compiled variants. It uses the Curiously Recurring
  * Template Pattern (CRTP) to access static members of the derived class.
  *
  * The derived class must provide:
- * - ``static constexpr const char *Variant``: variant name string
- * - ``static constexpr ObjectType Type``: object type enumeration value
- * - ``static constexpr const char *Domain``: string that represents the plugin category
- * - ``using UInt32 = ...``: type that indicates whether this is a JIT variant
+ * - `static constexpr const char *Variant`: variant name string
+ * - `static constexpr ObjectType Type`: object type enumeration value
+ * - `static constexpr const char *Domain`: string that represents the plugin category
+ * - `using UInt32 = ...`: type that indicates whether this is a JIT variant
  *
- * The ``MI_DECLARE_PLUGIN_BASE_CLASS()`` macro ensures that these attributes are present.
+ * The `MI_DECLARE_PLUGIN_BASE_CLASS()` macro ensures that these attributes are present.
  */
 template <typename Derived>
 class JitObject : public Object {
 public:
     /// Return the identifier of this instance
-    std::string_view id() const override {
-        const char *p = id_ptr();
-        return p ? std::string_view(p) : std::string_view();
-    }
+    std::string_view id() const override { return m_id; }
 
     /// Set the identifier of this instance
-    void set_id(std::string_view id) override {
-        uintptr_t flag = m_state & 1;
-        delete[] id_ptr();
-        char *p = nullptr;
-        if (!id.empty()) {
-            p = new char[id.size() + 1];
-            memcpy(p, id.data(), id.size());
-            p[id.size()] = '\0';
-        }
-        m_state = (uintptr_t) p | flag;
-    }
-
-    /// Withdraw this instance from the JIT registry. This can be useful when
-    /// an instance should not be reached by traced function calls.
-    void unregister() {
-        if constexpr (dr::is_jit_v<typename Derived::UInt32>) {
-            if (!(m_state & 1)) {
-                jit_registry_remove(this);
-                m_state |= 1;
-            }
-        }
-    }
+    void set_id(std::string_view id) override { m_id = id; }
 
 protected:
     /// Constructor with ID and optional ObjectType
-    JitObject(std::string_view id, ObjectType type = ObjectType::Unknown) {
-        JitObject::set_id(id);
+    JitObject(std::string_view id, ObjectType type = ObjectType::Unknown) : m_id(id) {
         if constexpr (dr::is_jit_v<typename Derived::UInt32>) {
             const char *domain = type == ObjectType::Unknown
                                      ? Derived::Domain
@@ -345,22 +311,13 @@ protected:
 
     /// Deregister from JIT registry on destruction
     ~JitObject() {
-        if constexpr (dr::is_jit_v<typename Derived::UInt32>) {
-            if (!(m_state & 1))
-                jit_registry_remove(this);
-        }
-        delete[] id_ptr();
+        if constexpr (dr::is_jit_v<typename Derived::UInt32>)
+            jit_registry_remove(this);
     }
 
 private:
-    const char *id_ptr() const {
-        return (const char *) (m_state & ~(uintptr_t) 1);
-    }
-
-    /// Combined storage for two pieces of information:
-    /// - Is the instance registered with Dr.Jit (lowest bit)
-    /// - A heap-allocated identifier string returned by ``id()``
-    uintptr_t m_state = 0;
+    /// Stores the identifier of this instance
+    std::string m_id;
 };
 
 
@@ -368,7 +325,7 @@ private:
 //                 Type declarations and macros for plugins
 // -----------------------------------------------------------------------------
 
-/// Represents a function that instantiate a plugin from a `Properties` object
+/// Represents a function that instantiate a plugin from a \ref Properties object
 using PluginInstantiateFn = ref<Object> (*)(void *payload, const Properties &);
 
 /// Represents a function that releases the resources of a plugin. It should only
@@ -394,7 +351,7 @@ using PluginEntryFn = void (*)(std::string_view name, PluginRegisterFn);
 // -----------------------------------------------------------------------------
 
 /**
- * This list of flags is used to classify the different types of
+ * \brief This list of flags is used to classify the different types of
  * parameters exposed by the plugins.
  *
  * For instance, in the context of differentiable rendering, it is important to
@@ -418,10 +375,10 @@ enum class ParamFlags : uint32_t {
 MI_DECLARE_ENUM_OPERATORS(ParamFlags)
 
 /**
- * Abstract class providing an interface for traversing scene graphs
+ * \brief Abstract class providing an interface for traversing scene graphs
  *
  * This interface can be implemented either in C++ or in Python, to be used in
- * conjunction with `Object.traverse()` to traverse a scene graph. Mitsuba
+ * conjunction with \ref Object::traverse() to traverse a scene graph. Mitsuba
  * uses this mechanism for two primary purposes:
  *
  * 1. **Dynamic scene modification**: After a scene is loaded, the traversal
@@ -433,16 +390,13 @@ MI_DECLARE_ENUM_OPERATORS(ParamFlags)
  *    discover all differentiable parameters in a scene (e.g., material
  *    properties, transformation matrices, emission values). These parameters
  *    can then be exposed to gradient-based optimizers for inverse rendering
- *    tasks, which in practice involves the `SceneParameters` Python class.
+ *    tasks, which in practice involves the ``SceneParameters`` Python class.
  *
  * The callback receives information about each traversed object's parameters
- * through the `TraversalCallback.put()` methods, which distinguish
- * between regular parameters and references to other scene objects that are
- * handled recursively.
- *
- * Passing an empty name asks the callback to derive one.
+ * through the \ref put() methods, which distinguish between regular parameters
+ * and references to other scene objects that are handled recursively.
  */
-class MI_EXPORT_LIB TraversalCallback {
+class TraversalCallback {
 public:
     template <typename T, typename Flags> void put(std::string_view name, ref<T> &value, Flags flags) {
         put_object(name, value.get(), (uint32_t) flags);
@@ -460,8 +414,7 @@ public:
         put_value(name, &value, flags_val, typeid(T));
     }
 
-    // Forward declaration for field<...> values that simultaneously store
-    // host+device values
+    /// Forward declaration for field<...> values that simultaneously store host+device values
     template <typename DeviceType, typename HostType, typename SFINAE, typename Flags>
     void put(std::string_view name, field<DeviceType, HostType, SFINAE> &value, Flags flags);
 
@@ -474,20 +427,10 @@ protected:
                            uint32_t flags,
                            const std::type_info &type) = 0;
 
-    /// Actual implementation for `Object` references [To be provided by subclass]
+    /// Actual implementation for Object references [To be provided by subclass]
     virtual void put_object(std::string_view name,
                             Object *value,
                             uint32_t flags) = 0;
-
-    /**
-     * Extend the lifetime of a Python object whose contents were
-     * reported to `put()`
-     *
-     * A plugin written in Python can report a value that exists only for the
-     * duration of the call. It must invoke this funcdtion with the borrowed
-     * ``PyObject*`` so that the caller can keep it alive.
-     */
-    virtual void keep_alive(void *python_object);
 };
 
 /// Prints the canonical string representation of an object instance

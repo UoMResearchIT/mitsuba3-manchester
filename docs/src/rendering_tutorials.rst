@@ -12,7 +12,6 @@ with Mitsuba 3:
 
 .. nbgallery::
 
-    quickstart/drjit_quickstart
     quickstart/mitsuba_quickstart
     rendering/editing_a_scene
     rendering/multi_view_rendering

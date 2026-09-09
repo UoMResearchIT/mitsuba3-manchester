@@ -6,8 +6,7 @@
 
 NAMESPACE_BEGIN(mitsuba)
 
-/**
- * This class defines an abstract destination
+/** \brief This class defines an abstract destination
  * for logging-relevant information
  */
 class MI_EXPORT_LIB Appender : public Object {
@@ -19,19 +18,23 @@ public:
     virtual void append(LogLevel level, std::string_view text) = 0;
 
     /**
-     * Process a progress message
+     * \brief Process a progress message
      *
-     * Args:
-     *     progress: Percentage value in [0, 100]
+     * \param progress
+     *     Percentage value in [0, 100]
      *
-     *     name: Title of the progress message
+     * \param name
+     *     Title of the progress message
      *
-     *     formatted: Formatted string representation of the message
+     * \param formatted
+     *     Formatted string representation of the message
      *
-     *     eta: Estimated time until 100% is reached.
+     * \param eta
+     *     Estimated time until 100% is reached.
      *
-     *     ptr: Custom pointer payload. This is used to express the
-     *         context of a progress message.
+     * \param ptr
+     *     Custom pointer payload. This is used to express the
+     *     context of a progress message.
      */
     virtual void log_progress(float progress,
                               std::string_view name,
@@ -42,17 +45,14 @@ public:
     MI_DECLARE_CLASS(Appender)
 };
 
-/**
- * `Appender` implementation, which writes to an
+/** \brief %Appender implementation, which writes to an
  * arbitrary C++ output stream
  */
 class MI_EXPORT_LIB StreamAppender : public Appender {
 public:
     /**
      * Create a new stream appender
-     *
-     * Note:
-     *     This constructor is not exposed in the Python bindings
+     * \remark This constructor is not exposed in the Python bindings
      */
     StreamAppender(std::ostream *stream);
 

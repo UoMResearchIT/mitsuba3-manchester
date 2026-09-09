@@ -11,13 +11,13 @@
 NAMESPACE_BEGIN(mitsuba)
 
 /**
- * Wrapper for the OptiX AI denoiser
+ * \brief Wrapper for the OptiX AI denoiser
  *
  * The OptiX AI denoiser is wrapped in this object such that it can work
  * directly with Mitsuba types and its conventions.
  *
  * The denoiser works best when applied to noisy renderings that were produced
- * with a `Film` which used the ``box`` `ReconstructionFilter`. With a
+ * with a \ref Film which used the `box` \ref ReconstructionFilter. With a
  * filter that spans multiple pixels, the denoiser might identify some local
  * variance as a feature of the scene and will not denoise it.
  */
@@ -27,29 +27,32 @@ public:
     MI_IMPORT_TYPES()
 
     /**
-     * Constructs an OptiX denoiser
+     * \brief Constructs an OptiX denoiser
      *
-     * Args:
-     *     input_size: Resolution of noisy images that will be fed to the denoiser.
+     * \param input_size
+     *      Resolution of noisy images that will be fed to the denoiser.
      *
-     *     albedo: Whether or not albedo information will also be given to the
-     *         denoiser.
-     *         This parameter is optional, by default it is false.
+     * \param albedo
+     *      Whether or not albedo information will also be given to the
+     *      denoiser.
+     *      This parameter is optional, by default it is false.
      *
-     *     normals: Whether or not shading normals information will also be given to the
-     *         denoiser.
-     *         This parameter is optional, by default it is false.
+     * \param normals
+     *      Whether or not shading normals information will also be given to the
+     *      denoiser.
+     *      This parameter is optional, by default it is false.
      *
-     *     temporal: Whether or not temporal information will also be given to the
-     *         denoiser.
-     *         This parameter is optional, by default it is false.
+     * \param temporal
+     *      Whether or not temporal information will also be given to the
+     *      denoiser.
+     *      This parameter is optional, by default it is false.
      *
-     *     denoise_alpha: Whether or not the alpha channel (if specified in the noisy input)
-     *         should be denoised too.
-     *         This parameter is optional, by default it is false.
+     * \param denoise_alpha
+     *      Whether or not the alpha channel (if specified in the noisy input)
+     *      should be denoised too.
+     *      This parameter is optional, by default it is false.
      *
-     * Returns:
-     *     A callable object which will apply the OptiX denoiser.
+     * \return A callable object which will apply the OptiX denoiser.
      */
     OptixDenoiser(const ScalarVector2u &input_size, bool albedo,
                   bool normals = false, bool temporal = false,
@@ -62,45 +65,49 @@ public:
     ~OptixDenoiser();
 
     /**
-     * Apply denoiser on inputs which are `TensorXf` objects.
+     * \brief Apply denoiser on inputs which are \ref TensorXf objects.
      *
-     * Args:
-     *     noisy: The noisy input. (tensor shape: (width, height, 3 | 4))
+     * \param noisy
+     *      The noisy input. (tensor shape: (width, height, 3 | 4))
      *
-     *     albedo: Albedo information of the noisy rendering.
-     *         This parameter is optional unless the OptixDenoiser was built with
-     *         albedo support. (tensor shape: (width, height, 3))
+    * \param albedo
+     *      Albedo information of the noisy rendering.
+     *      This parameter is optional unless the OptixDenoiser was built with
+     *      albedo support. (tensor shape: (width, height, 3))
      *
-     *     normals: Shading normal information of the noisy rendering. The normals must
-     *         be in the coordinate frame of the sensor which was used to render
-     *         the noisy input.
-     *         This parameter is optional unless the OptixDenoiser was built with
-     *         normals support. (tensor shape: (width, height, 3))
+     * \param normals
+     *      Shading normal information of the noisy rendering. The normals must
+     *      be in the coordinate frame of the sensor which was used to render
+     *      the noisy input.
+     *      This parameter is optional unless the OptixDenoiser was built with
+     *      normals support. (tensor shape: (width, height, 3))
      *
-     *     to_sensor: An `AffineTransform4f` which is applied to the ``normals`` parameter
-     *         before denoising. This should be used to transform the normals into
-     *         the correct coordinate frame.
-     *         This parameter is optional, by default no transformation is
-     *         applied.
+     * \param to_sensor
+     *      A \ref Transform4f which is applied to the \c normals parameter
+     *      before denoising. This should be used to transform the normals into
+     *      the correct coordinate frame.
+     *      This parameter is optional, by default no transformation is
+     *      applied.
      *
-     *     flow: With temporal denoising, this parameter is the optical flow between
-     *         the previous frame and the current one. It should capture the 2D
-     *         motion of each individual pixel.
-     *         When this parameter is unknown, it can be set to a
-     *         zero-initialized `TensorXf` of the correct size and still produce
-     *         convincing results.
-     *         This parameter is optional unless the OptixDenoiser was built with
-     *         temporal denoising support. (tensor shape: (width, height, 2))
+     * \param flow
+     *      With temporal denoising, this parameter is the optical flow between
+     *      the previous frame and the current one. It should capture the 2D
+     *      motion of each individual pixel.
+     *      When this parameter is unknown, it can be set to a
+     *      zero-initialized TensorXf of the correct size and still produce
+     *      convincing results.
+     *      This parameter is optional unless the OptixDenoiser was built with
+     *      temporal denoising support. (tensor shape: (width, height, 2))
      *
-     *     previous_denoised: With temporal denoising, the previous denoised frame should be
-     *         passed here.
-     *         For the very first frame, the OptiX documentation recommends
-     *         passing the noisy input for this argument.
-     *         This parameter is optional unless the OptixDenoiser was built with
-     *         temporal denoising support. (tensor shape: (width, height, 3 | 4))
+     * \param previous_denoised
+     *      With temporal denoising, the previous denoised frame should be
+     *      passed here.
+     *      For the very first frame, the OptiX documentation recommends
+     *      passing the noisy input for this argument.
+     *      This parameter is optional unless the OptixDenoiser was built with
+     *      temporal denoising support. (tensor shape: (width, height, 3 | 4))
      *
-     * Returns:
-     *     The denoised input.
+     * \return The denoised input.
      */
     TensorXf operator()(const TensorXf &noisy,
                         const TensorXf &albedo = TensorXf(),
@@ -110,53 +117,58 @@ public:
                         const TensorXf &previous_denoised = TensorXf()) const;
 
     /**
-     * Apply denoiser on inputs which are `Bitmap` objects.
+     * \brief Apply denoiser on inputs which are \ref Bitmap objects.
      *
-     * Args:
-     *     noisy: The noisy input. When passing additional information like albedo or
-     *         normals to the denoiser, this `Bitmap` object must use the
-     *         `Bitmap.PixelFormat.MultiChannel` pixel format.
+     * \param noisy
+     *      The noisy input. When passing additional information like albedo or
+     *      normals to the denoiser, this \ref Bitmap object must be a \ref
+     *      MultiChannel bitmap.
      *
-     *     albedo_ch: The name of the channel in the ``noisy`` parameter which contains
-     *         the albedo information of the noisy rendering.
-     *         This parameter is optional unless the OptixDenoiser was built with
-     *         albedo support.
+     * \param albedo_ch
+     *      The name of the channel in the \c noisy parameter which contains
+     *      the albedo information of the noisy rendering.
+     *      This parameter is optional unless the OptixDenoiser was built with
+     *      albedo support.
      *
-     *     normals_ch: The name of the channel in the ``noisy`` parameter which contains
-     *         the shading normal information of the noisy rendering.
-     *         The normals must be in the coordinate frame of the sensor which was
-     *         used to render the noisy input.
-     *         This parameter is optional unless the OptixDenoiser was built with
-     *         normals support.
+     * \param normals_ch
+     *      The name of the channel in the \c noisy parameter which contains
+     *      the shading normal information of the noisy rendering.
+     *      The normals must be in the coordinate frame of the sensor which was
+     *      used to render the noisy input.
+     *      This parameter is optional unless the OptixDenoiser was built with
+     *      normals support.
      *
-     *     to_sensor: An `AffineTransform4f` which is applied to the ``normals`` parameter
-     *         before denoising. This should be used to transform the normals into
-     *         the correct coordinate frame.
-     *         This parameter is optional, by default no transformation is
-     *         applied.
+     * \param to_sensor
+     *      A \ref Transform4f which is applied to the \c normals parameter
+     *      before denoising. This should be used to transform the normals into
+     *      the correct coordinate frame.
+     *      This parameter is optional, by default no transformation is
+     *      applied.
      *
-     *     flow_ch: With temporal denoising, this parameter is name of the channel in
-     *         the ``noisy`` parameter which contains the optical flow between
-     *         the previous frame and the current one. It should capture the 2D
-     *         motion of each individual pixel.
-     *         When this parameter is unknown, it can be set to a
-     *         zero-initialized `TensorXf` of the correct size and still produce
-     *         convincing results.
-     *         This parameter is optional unless the OptixDenoiser was built with
-     *         temporal denoising support.
+     * \param flow_ch
+     *      With temporal denoising, this parameter is name of the channel in
+     *      the \c noisy parameter which contains the optical flow between
+     *      the previous frame and the current one. It should capture the 2D
+     *      motion of each individual pixel.
+     *      When this parameter is unknown, it can be set to a
+     *      zero-initialized TensorXf of the correct size and still produce
+     *      convincing results.
+     *      This parameter is optional unless the OptixDenoiser was built with
+     *      temporal denoising support.
      *
-     *     previous_denoised_ch: With temporal denoising, this parameter is name of the channel in
-     *         the ``noisy`` parameter which contains the previous denoised frame.
-     *         For the very first frame, the OptiX documentation recommends
-     *         passing the noisy input for this argument.
-     *         This parameter is optional unless the OptixDenoiser was built with
-     *         temporal denoising support.
+     * \param previous_denoised_ch
+     *      With temporal denoising, this parameter is name of the channel in
+     *      the \c noisy parameter which contains the previous denoised frame.
+     *      For the very first frame, the OptiX documentation recommends
+     *      passing the noisy input for this argument.
+     *      This parameter is optional unless the OptixDenoiser was built with
+     *      temporal denoising support.
      *
-     *     noisy_ch: The name of the channel in the ``noisy`` parameter which contains
-     *         the noisy image to be denoised.
+     * \param noisy_ch
+     *      The name of the channel in the \c noisy parameter which contains
+     *      the shading normal information of the noisy rendering.
      *
-     * Returns:
-     *     The denoised input.
+     * \return The denoised input.
      */
     ref<Bitmap> operator()(const ref<Bitmap> &noisy,
                            const std::string &albedo_ch = "",

@@ -104,7 +104,6 @@ INTEGRATOR_ORDERING = [
     '../src/python/python/ad/integrators/direct_projective.py',
     '../src/python/python/ad/integrators/prb_projective.py',
     '../src/python/python/ad/integrators/prbvolpath.py',
-    '../src/python/python/ad/integrators/volprim_rf_basic.py',
 ]
 
 FILM_ORDERING = [
@@ -154,7 +153,7 @@ def extract(target, filename):
         match = re.match(r'^/\*\*! ?(.*)$', line)
         if match is not None:
             print("Processing %s" % filename)
-            line = match.group(1).replace('%', r'\%')
+            line = match.group(1).replace('%', '\%')
             target.write(line + '\n')
             inheader = True
             continue

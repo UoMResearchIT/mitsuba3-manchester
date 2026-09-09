@@ -11,8 +11,8 @@
 NAMESPACE_BEGIN(mitsuba)
 
 /**
- * Build the per-shape registry-id buffer used by the CPU backends to
- * recover a `ShapePtr` from a hit's geometry / instance index.
+ * \brief Build the per-shape registry-id buffer used by the CPU backends to
+ * recover a \c ShapePtr from a hit's geometry / instance index.
  */
 template <typename Float, typename Spectrum>
 DynamicBuffer<dr::uint32_array_t<Float>>
@@ -29,12 +29,14 @@ build_registry_ids(const std::vector<ref<Shape<Float, Spectrum>>> &shapes) {
 }
 
 /**
- * Decode the closest-hit result of a kd-tree (LLVM) ray trace into
- * a `PreliminaryIntersection`.
+ * \brief Decode the closest-hit result of a CPU (LLVM) ray trace into
+ * a \ref PreliminaryIntersection.
  *
- * The trace writes ``out`` = { valid, t, u, v, prim_index, shape_index,
- * unused, unused }. The owning `ShapePtr` comes from ``registry_ids``,
- * gathered by the top-level shape index.
+ * The trace writes \c out = { valid, t, u, v, prim_index, shape_index,
+ * inst_index, hit_inst }. The owning \c ShapePtr comes from \c registry_ids,
+ * gathered by instance index for instanced hits and shape index for top-level
+ * hits. Embree and the native kd-tree share this logic and only differ in
+ * \c RayScalar precision.
  */
 template <typename Float, typename Spectrum, typename RayScalar>
 auto decode_cpu_llvm_pi(
@@ -48,21 +50,27 @@ auto decode_cpu_llvm_pi(
     pi.t           = Float(RayScalar::steal(out[1]));
     pi.prim_uv     = Vector2f(RayScalar::steal(out[2]), RayScalar::steal(out[3]));
     pi.prim_index  = UInt32::steal(out[4]);
-    pi.shape       = dr::gather<UInt32>(registry_ids, UInt32::steal(out[5]),
-                                        pi.valid);
-    UInt32::steal(out[6]);
-    Mask::steal(out[7]);
+    pi.shape_index = UInt32::steal(out[5]);
+
+    UInt32 inst_index = UInt32::steal(out[6]);
+    Mask hit_inst = Mask::steal(out[7]);
+    UInt32 index = dr::select(hit_inst, inst_index, pi.shape_index);
+
+    ShapePtr shape = dr::gather<UInt32>(registry_ids, index, pi.valid);
+
+    pi.instance = shape & hit_inst;
+    pi.shape    = shape & !hit_inst;
 
     return pi;
 }
 
 /**
- * Assemble the standard 14-element input vector for a CPU (LLVM) ray
- * trace and invoke ``jit_llvm_ray_trace``.
+ * \brief Assemble the standard 14-element input vector for a CPU (LLVM) ray
+ * trace and invoke \c jit_llvm_ray_trace.
  *
- * With ``shadow_ray``, this is an occlusion query and ``out`` holds one boolean
+ * With \c shadow_ray, this is an occlusion query and \c out holds one boolean
  * result variable index. Otherwise it holds eight. Ray components are supplied
- * in the precision the backend traces in (float32 for Embree, ``Float`` for the
+ * in the precision the backend traces in (float32 for Embree, \c Float for the
  * native kd-tree).
  */
 template <typename Float, typename RayScalar, typename Mask>
@@ -71,7 +79,6 @@ void cpu_llvm_ray_trace(void *func_ptr, uint32_t func_handle_index,
                         const dr::Array<RayScalar, 3> &ray_o,
                         const dr::Array<RayScalar, 3> &ray_d, RayScalar ray_time,
                         RayScalar ray_maxt, Mask coherent, Mask active,
-                        const dr::uint32_array_t<Float> &visibility_mask,
                         int shadow_ray, uint32_t *out) {
     using UInt32 = dr::uint32_array_t<Float>;
     using UInt64 = dr::uint64_array_t<Float>;
@@ -89,14 +96,14 @@ void cpu_llvm_ray_trace(void *func_ptr, uint32_t func_handle_index,
                         ray_o.z().index(), ray_mint.index(),
                         ray_d.x().index(), ray_d.y().index(),
                         ray_d.z().index(), ray_time.index(),
-                        ray_maxt.index(),  visibility_mask.index(),
+                        ray_maxt.index(),  zero.index(),
                         zero.index(),      zero.index() };
 
     jit_llvm_ray_trace(func_v.index(), scene_v.index(), shadow_ray, in, out);
 }
 
 /**
- * Map a CPU backend's JIT handle to its native object and cleanup hook.
+ * \brief Map a CPU backend's JIT handle to its native object and cleanup hook.
  */
 template <typename UInt64>
 void init_mapped_handle(UInt64 &handle, void *ptr,
@@ -107,7 +114,7 @@ void init_mapped_handle(UInt64 &handle, void *ptr,
 }
 
 /**
- * Map the width-specialized intersect / occlude entry points to
+ * \brief Map the width-specialized intersect / occlude entry points to
  * freeze-visible JIT handles (shared by both CPU backends).
  */
 template <typename UInt64>

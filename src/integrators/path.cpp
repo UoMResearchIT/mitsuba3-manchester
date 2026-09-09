@@ -30,6 +30,10 @@ Path tracer (:monosp:`path`)
      1, then path generation may randomly cease after encountering directly
      visible surfaces. (Default: 5)
 
+ * - hide_emitters
+   - |bool|
+   - Hide directly visible emitters. (Default: no, i.e. |false|)
+
 This integrator implements a basic path tracer and is a **good default choice**
 when there is no strong reason to prefer another method.
 
@@ -82,7 +86,7 @@ paths of arbitrary length to compute both direct and indirect illumination.
 template <typename Float, typename Spectrum>
 class PathIntegrator : public MonteCarloIntegrator<Float, Spectrum> {
 public:
-    MI_IMPORT_BASE(MonteCarloIntegrator, m_max_depth, m_rr_depth)
+    MI_IMPORT_BASE(MonteCarloIntegrator, m_max_depth, m_rr_depth, m_hide_emitters)
     MI_IMPORT_TYPES(Scene, Sampler, Medium, Emitter, EmitterPtr, BSDF, BSDFPtr)
 
     PathIntegrator(const Properties &props) : Base(props) { }
@@ -107,7 +111,8 @@ public:
         PreliminaryIntersection3f pi  = dr::zeros<PreliminaryIntersection3f>();
         UInt32 depth                  = 0;
 
-        Mask valid_ray = false;
+        // If m_hide_emitters == false, the environment emitter will be visible
+        Mask valid_ray = !m_hide_emitters && (scene->environment() != nullptr);
 
         // Variables caching information from the previous bounce
         Interaction3f prev_si         = dr::zeros<Interaction3f>();
@@ -115,11 +120,12 @@ public:
         Bool          prev_bsdf_delta = true;
         BSDFContext   bsdf_ctx;
 
-        // Set up a Dr.Jit loop. This optimizes away to a normal loop in scalar
-        // mode, and it generates either a megakernel (default) or
-        // wavefront-style renderer in JIT variants. This can be controlled by
-        // passing the '-W' command line flag to the mitsuba binary or
-        // enabling/disabling the JitFlag.LoopRecord bit in Dr.Jit.
+        /* Set up a Dr.Jit loop. This optimizes away to a normal loop in scalar
+           mode, and it generates either a megakernel (default) or
+           wavefront-style renderer in JIT variants. This can be controlled by
+           passing the '-W' command line flag to the mitsuba binary or
+           enabling/disabling the JitFlag.LoopRecord bit in Dr.Jit.
+        */
         struct LoopState {
             Ray3f ray;
             PreliminaryIntersection3f pi;
@@ -152,38 +158,53 @@ public:
             sampler
         };
 
-        // First bounce is usually coherent - don't reorder threads. The
-        // camera mask hides emitters marked as invisible.
+        // First bounce is usually coherent - don't reorder threads
         ls.pi = scene->ray_intersect_preliminary(ls.ray,
                                                  /* coherent = */ true,
                                                  /* reorder = */ false,
                                                  /* reorder_hint = */ 0,
                                                  /* reorder_hint_bits = */ 0,
-                                                 ls.active,
-                                                 +RayMask::Camera);
+                                                 ls.active);
+
+        // ---------------------- Hide area emitters ----------------------
+
+        /* dr::any_or() checks for active entries in the provided boolean
+           array. JIT/Megakernel modes can't do this test efficiently as
+           each Monte Carlo sample runs independently. In this case,
+           dr::any_or<..>() returns the template argument (true) which means
+           that the 'if' statement is always conservatively taken. */
+
+        if (m_hide_emitters && dr::any_or<true>(ls.depth == 0u)) {
+            // Did we hit an area emitter? If so, skip all area emitters along this ray
+            Mask skip_emitters = ls.pi.is_valid() &&
+                                 (ls.pi.shape->emitter() != nullptr) &&
+                                 ls.active;
+
+            if (dr::any_or<true>(skip_emitters)) {
+                SurfaceInteraction3f si = ls.pi.compute_surface_interaction(
+                    ls.ray, +RayFlags::Minimal, skip_emitters);
+                Ray3f ray = si.spawn_ray(ls.ray.d);
+                PreliminaryIntersection3f pi_after_skip =
+                    Base::skip_area_emitters(scene, ray, true, skip_emitters);
+                dr::masked(ls.pi, skip_emitters) = pi_after_skip;
+            }
+        }
 
         dr::tie(ls) = dr::while_loop(dr::make_tuple(ls),
             [](const LoopState& ls) { return ls.active; },
             [this, scene, bsdf_ctx](LoopState& ls) {
 
-            // dr::while_loop implicitly masks all code in the loop using the
-            // 'active' flag, so there is no need to pass it to every function
+            /* dr::while_loop implicitly masks all code in the loop using the
+               'active' flag, so there is no need to pass it to every function */
 
             // Fill out all information of the interaction
-            SurfaceInteraction3f si = scene->compute_surface_interaction(
-                ls.ray, ls.pi, +RayFlags::Default);
+            SurfaceInteraction3f si =
+                ls.pi.compute_surface_interaction(ls.ray, +RayFlags::All);
 
             // ---------------------- Direct emission ----------------------
 
-            // Ray mask of the trace that produced si to handle hidden emitters
-            UInt32 ray_mask = dr::select(ls.depth == 0u, +RayMask::Camera,
-                                         +RayMask::All);
-
-            EmitterPtr emitter = si.emitter(scene, true, ray_mask);
-            ls.valid_ray |= emitter != nullptr;
-
-            if (dr::any_or<true>(emitter != nullptr)) {
-                DirectionSample3f ds(scene, si, ls.prev_si, ray_mask);
+            if (dr::any_or<true>(si.emitter(scene) != nullptr)) {
+                DirectionSample3f ds(scene, si, ls.prev_si);
                 Float em_pdf = 0.f;
 
                 if (dr::any_or<true>(!ls.prev_bsdf_delta))
@@ -196,7 +217,7 @@ public:
                 // Accumulate, being careful with polarization (see spec_fma)
                 ls.result = spec_fma(
                     ls.throughput,
-                    emitter->eval(si, ls.prev_bsdf_pdf > 0.f) * mis_bsdf,
+                    ds.emitter->eval(si, ls.prev_bsdf_pdf > 0.f) * mis_bsdf,
                     ls.result);
             }
 
@@ -205,6 +226,7 @@ public:
 
             if (dr::none_or<false>(active_next)) {
                 ls.active = active_next;
+                ls.valid_ray |= (si.emitter(scene) != nullptr) && !m_hide_emitters;
                 return; // early exit for scalar mode
             }
 
@@ -225,8 +247,8 @@ public:
                     si, ls.sampler->next_2d(), true, active_em);
                 active_em &= (ds.pdf != 0.f);
 
-                // Given the detached emitter sample, recompute its contribution
-                // with AD to enable light source optimization.
+                /* Given the detached emitter sample, recompute its contribution
+                   with AD to enable light source optimization. */
                 if (dr::grad_enabled(si.p)) {
                     ds.d = dr::normalize(ds.p - si.p);
                     Spectrum em_val = scene->eval_emitter_direction(si, ds, active_em);
@@ -264,13 +286,13 @@ public:
 
             ls.ray = si.spawn_ray(si.to_world(bsdf_sample.wo));
 
-            // When the path tracer is differentiated, we must be careful that
-            // the generated Monte Carlo samples are detached (i.e. don't track
-            // derivatives) to avoid bias resulting from the combination of moving
-            // samples and discontinuous visibility. We need to re-evaluate the
-            // BSDF differentiably with the detached sample in that case.
+            /* When the path tracer is differentiated, we must be careful that
+               the generated Monte Carlo samples are detached (i.e. don't track
+               derivatives) to avoid bias resulting from the combination of moving
+               samples and discontinuous visibility. We need to re-evaluate the
+               BSDF differentiably with the detached sample in that case. */
             if (dr::grad_enabled(ls.ray)) {
-                ls.ray = dr::detach(ls.ray);
+                ls.ray = dr::detach<true>(ls.ray);
 
                 // Recompute 'wo' to propagate derivatives to cosine term
                 Vector3f wo_2 = si.to_local(ls.ray.d);
@@ -300,9 +322,9 @@ public:
             Mask rr_active = ls.depth >= m_rr_depth,
                  rr_continue = ls.sampler->next_1d() < rr_prob;
 
-            // Differentiable variants of the renderer require the russian
-            // roulette sampling weight to be detached to avoid bias. This is a
-            // no-op in non-differentiable variants.
+            /* Differentiable variants of the renderer require the russian
+               roulette sampling weight to be detached to avoid bias. This is a
+               no-op in non-differentiable variants. */
             ls.throughput[rr_active] *= dr::rcp(dr::detach(rr_prob));
 
             ls.active = active_next && (!rr_active || rr_continue) &&
@@ -323,6 +345,7 @@ public:
         };
     }
 
+    //! @}
     // =============================================================
 
     std::string to_string() const override {
@@ -337,11 +360,11 @@ public:
         pdf_a *= pdf_a;
         pdf_b *= pdf_b;
         Float w = pdf_a / (pdf_a + pdf_b);
-        return dr::detach(dr::select(dr::isfinite(w), w, 0.f));
+        return dr::detach<true>(dr::select(dr::isfinite(w), w, 0.f));
     }
 
     /**
-     * Perform a Mueller matrix multiplication in polarized modes, and a
+     * \brief Perform a Mueller matrix multiplication in polarized modes, and a
      * fused multiply-add otherwise.
      */
     Spectrum spec_fma(const Spectrum &a, const Spectrum &b,

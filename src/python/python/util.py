@@ -1,7 +1,6 @@
 from __future__ import annotations as __annotations__ # Delayed parsing of type annotations
 
 import contextlib
-import copy as _copy
 from collections.abc import Mapping
 from typing import Any, Optional, Union
 
@@ -15,39 +14,39 @@ class SceneParameters(Mapping):
     (``parameter_map[key]``). The class exposes several non-standard functions,
     specifically :py:meth:`~mitsuba.SceneParameters.update()`, and
     :py:meth:`~mitsuba.SceneParameters.keep()`.
-
-    The traversal itself and the storage of its result live in
-    :py:class:`mitsuba.ParameterTable`. Keys and the Python objects of
-    traversed nodes are produced on demand, hence a large scene graph costs
-    little until its parameters are actually used.
     """
 
-    def __init__(self, table=None):
+    def __init__(self, properties=None, hierarchy=None):
         """
         Private constructor (use
         :py:func:`mitsuba.traverse()` instead)
         """
-        self._table = table if table is not None else mi.ParameterTable()
+        self.properties = properties if properties is not None else {}
+        self.hierarchy  = hierarchy  if hierarchy  is not None else {}
         self.update_candidates = {}
-        self._keys = None
+        self.nodes_to_update = {}
+
+        self.set_property = mi.set_property
+        self.get_property = mi.get_property
 
     def copy(self):
-        return SceneParameters(_copy.copy(self._table))
-
-    def _index(self, key: str) -> int:
-        index = self._table.lookup(key)
-        if index < 0:
-            raise KeyError(key)
-        return index
+        return SceneParameters(
+            dict(self.properties),
+            dict(self.hierarchy))
 
     def __contains__(self, key: str):
-        return self._table.lookup(key) >= 0
+        return self.properties.__contains__(key)
 
     def __get_value(self, key: str):
-        return self._table.get(self._index(key))
+        value, value_type, node, _ = self.properties[key]
+
+        if value_type is not None:
+            value = self.get_property(value, value_type, node)
+
+        return value
 
     def __getitem__(self, key: str):
-        value = self._table.get(self._index(key))
+        value = self.__get_value(key)
 
         if key not in self.update_candidates:
             self.update_candidates[key] = _jit_id_hash(value)
@@ -55,43 +54,59 @@ class SceneParameters(Mapping):
         return value
 
     def __setitem__(self, key: str, value):
-        index = self._index(key)
-        flags = self._table.flags(index)
+        cur, value_type, node, flags = self.properties[key]
 
         if (flags & mi.ParamFlags.ReadOnly) != 0:
-            raise Exception(f'{key} is a read-only parameter!')
+            raise Exception(f'{key} is a Read-Only parameter!')
 
-        cur_value = self._table.get(index)
+        cur_value = cur
+        if value_type is not None:
+            cur_value = self.get_property(cur, value_type, node)
 
-        try:
-            if (_jit_id_hash(cur_value) == _jit_id_hash(value) and
-                dr.all(cur_value == value, axis=None)):
-                # Turn this into a no-op when the set value is identical to the new value
-                return
-        except Exception:
-            # Incomparable (e.g. mismatched shapes): let the write proceed so
-            # that the parameter owner can report a meaningful error
-            pass
+        if (_jit_id_hash(cur_value) == _jit_id_hash(value) and
+            dr.all(cur_value == value, axis=None)):
+            # Turn this into a no-op when the set value is identical to the new value
+            return
 
         self.set_dirty(key)
-        self._table.set(index, value)
+
+        if value_type is None:
+            try:
+                self.set_property(cur, value)
+            except Exception as e:
+                if "Target property type isn't a nanobind type" in str(e):
+                    mi.Log(
+                        mi.LogLevel.Warn,
+                        f"Parameter '{key}' cannot be modified! This usually "
+                        "happens when the parameter is not a Mitsuba type."
+                        "Please use non-scalar Mitsuba types in your custom "
+                        "plugins."
+                    )
+                else:
+                    raise e
+        else:
+            self.set_property(cur, value_type, value)
 
     def __delitem__(self, key: str) -> None:
-        index = self._index(key)
-        self._table.keep([i for i in range(len(self._table)) if i != index])
-        self._keys = None
+        del self.properties[key]
 
     def __len__(self) -> int:
-        return len(self._table)
+        return len(self.properties)
 
     def __repr__(self) -> str:
         if len(self) == 0:
             return f'SceneParameters[]'
-        keys = self.keys()
-        rows = []
-        for index, k in enumerate(keys):
-            value = self._table.get(index)
-            flags = self._table.flags(index)
+        name_length = int(max(len(k) for k in self.properties.keys()) + 2)
+        type_length = int(max(len(type(v[0] if v[1] is None else self.get_property(*v[:3])).__name__) for k, v in self.properties.items()))
+        param_list = '\n'
+        param_list += '  ' + '-' * (name_length + 53) + '\n'
+        param_list += f"  {'Name':{name_length}}  {'Flags':7}  {'Type':{type_length}} {'Parent'}\n"
+        param_list += '  ' + '-' * (name_length + 53) + '\n'
+        for k, v in self.properties.items():
+            value, value_type, node, flags = v
+
+            if value_type is not None:
+                value = self.get_property(value, value_type, node)
 
             flags_str = ''
             if (flags & mi.ParamFlags.NonDifferentiable) == 0 and (flags & mi.ParamFlags.ReadOnly) == 0:
@@ -101,17 +116,7 @@ class SceneParameters(Mapping):
             if (flags & mi.ParamFlags.Discontinuous) != 0:
                 flags_str += ', D'
 
-            rows.append((k, flags_str, type(value).__name__,
-                         self._table.owner(index).class_name()))
-
-        name_length = int(max(len(r[0]) for r in rows) + 2)
-        type_length = int(max(len(r[2]) for r in rows))
-        param_list = '\n'
-        param_list += '  ' + '-' * (name_length + 53) + '\n'
-        param_list += f"  {'Name':{name_length}}  {'Flags':7}  {'Type':{type_length}} {'Parent'}\n"
-        param_list += '  ' + '-' * (name_length + 53) + '\n'
-        for k, flags_str, type_name, parent in rows:
-            param_list += f'  {k:{name_length}}  {flags_str:7}  {type_name:{type_length}} {parent}\n'
+            param_list += f'  {k:{name_length}}  {flags_str:7}  {type(value).__name__:{type_length}} {node.class_name()}\n'
         return f'SceneParameters[{param_list}]'
 
     def __iter__(self):
@@ -133,27 +138,14 @@ class SceneParameters(Mapping):
         return self.__iter__()
 
     def keys(self):
-        if self._keys is None:
-            self._keys = self._table.keys()
-        return self._keys
+        return self.properties.keys()
 
     def _ipython_key_completions_(self):
-        return self.keys()
+        return self.properties.keys()
 
     def flags(self, key: str):
         """Return parameter flags"""
-        return self._table.flags(self._index(key))
-
-    def owner(self, key: str):
-        """
-        Return the Mitsuba object that reported the parameter ``key``.
-
-        For example, the owner of ``'light.emitter.radiance.value'`` is the
-        texture whose member ``value`` refers to.
-
-        Raises ``KeyError`` when no parameter with this key exists.
-        """
-        return self._table.owner(self._index(key))
+        return self.properties[key][3]
 
     def set_dirty(self, key: str):
         """
@@ -164,46 +156,59 @@ class SceneParameters(Mapping):
         This method should rarely be called explicitly. The
         :py:class:`~mitsuba.SceneParameters` will detect most operations on
         its values and automatically flag them as dirty. A common exception to
-        the detection mechanism is the :py:func:`~drjit.scatter` operation which
+        the detection mechanism is the :py:meth:`~drjit.scatter` operation which
         needs an explicit call to :py:meth:`~mitsuba.SceneParameters.set_dirty()`.
         """
-        index = self._index(key)
+        value, _, node, flags = self.properties[key]
 
-        if (self._table.flags(index) & mi.ParamFlags.NonDifferentiable) and \
-           dr.grad_enabled(self._table.get(index)):
+        is_nondifferentiable = (flags & mi.ParamFlags.NonDifferentiable)
+        if is_nondifferentiable and dr.grad_enabled(value):
             mi.Log(
                 mi.LogLevel.Warn,
                 f"Parameter '{key}' is marked as non-differentiable but has "
                 "gradients enabled, unexpected results may occur!"
             )
 
-        self._table.set_dirty(index)
+        node_key = key
+        while node is not None:
+            parent, depth = self.hierarchy[node]
+
+            name = node_key
+            if parent is not None:
+                node_key, name = node_key.rsplit('.', 1)
+
+            self.nodes_to_update.setdefault((depth, node), set())
+            self.nodes_to_update[(depth, node)].add(name)
+
+            node = parent
+
+        return self.properties[key]
 
     def update(self, values: Optional[Mapping] = None) -> list[tuple[Any, set]]:
         """
         This function should be called at the end of a sequence of writes
         to the dictionary. It automatically notifies all modified Mitsuba
         objects and their parent objects that they should refresh their
-        internal state. For instance, the scene may rebuild its acceleration
-        structures when a shape was modified, etc.
+        internal state. For instance, the scene may rebuild the kd-tree
+        when a shape was modified, etc.
 
         The return value of this function is a list of tuples where each tuple
         corresponds to a Mitsuba node/object that is updated. The tuple's first
         element is the node itself. The second element is the set of keys that
         the node is being updated for.
 
-        Args:
-            values: Optional dictionary-like object containing a set of keys
-                and values to be used to overwrite scene parameters. This
-                operation will happen before propagating the update further
-                into the scene internal state.
+        Parameter ``values`` (``dict``):
+            Optional dictionary-like object containing a set of keys and values
+            to be used to overwrite scene parameters. This operation will happen
+            before propagating the update further into the scene internal state.
         """
         if values is not None:
             for k, v in values.items():
                 if k in self:
                     self[k] = v
 
-        for key in list(self.update_candidates.keys()):
+        update_candidate_keys = list(self.update_candidates.keys())
+        for key in update_candidate_keys:
             # Candidate objects might have been modified inplace, we must check
             # the JIT identifiers to see if the object has truly changed.
             if _jit_id_hash(self.__get_value(key)) == self.update_candidates[key]:
@@ -211,32 +216,43 @@ class SceneParameters(Mapping):
 
             self.set_dirty(key)
 
-        out = self._table.update()
+        for key in self.keys():
+            dr.schedule(self.__get_value(key))
 
+        # Notify nodes from bottom to top
+        work_list = [(d, n, k) for (d, n), k in self.nodes_to_update.items()]
+        work_list = reversed(sorted(work_list, key=lambda x: x[0]))
+        out = []
+        for _, node, keys in work_list:
+            node.parameters_changed(list(keys))
+            out.append((node, keys))
+
+        self.nodes_to_update.clear()
         self.update_candidates.clear()
         dr.eval()
 
         return out
 
-    def keep(self, keys: str | list[str]) -> None:
+    def keep(self, keys: None | str | list[str]) -> None:
         """
         Reduce the size of the dictionary by only keeping elements,
         whose keys are defined by 'keys'.
 
-        Args:
-            keys: Specifies which parameters should be kept. Regex are
-                supported to define a subset of parameters at once.
+        Parameter ``keys`` (``None``, ``str``, ``[str]``):
+            Specifies which parameters should be kept. Regex are supported to define
+            a subset of parameters at once. If set to ``None``, all differentiable
+            scene parameters will be loaded.
         """
         if type(keys) is not list:
             keys = [keys]
 
         import re
         regexps = [re.compile(k).match for k in keys]
+        keys = [k for k in self.keys() if any (r(k) for r in regexps)]
 
-        self._table.keep([i for i, k in enumerate(self.keys())
-                         if any(r(k) for r in regexps)])
-        self._keys = None
-
+        self.properties = {
+            k: v for k, v in self.properties.items() if k in keys
+        }
 
 def _jit_id_hash(value: Any) -> int:
     """
@@ -247,7 +263,7 @@ def _jit_id_hash(value: Any) -> int:
     """
 
     def jit_ids(value: Any) -> list[tuple[int, Optional[int]]]:
-        return dr.detail.collect_indices(value, dr.detail.TraverseRole.Freeze)
+        return dr.detail.collect_indices(value)
 
     return hash(tuple(jit_ids(value)))
 
@@ -258,7 +274,66 @@ def traverse(node: mi.Object) -> SceneParameters:
 
     See also :py:class:`mitsuba.SceneParameters`.
     """
-    return SceneParameters(mi.ParameterTable(node))
+
+    class SceneTraversal(mi.TraversalCallback):
+        def __init__(self, node, parent=None, properties=None,
+                     hierarchy=None, prefixes=None, name=None, depth=0,
+                     flags=+mi.ParamFlags.Differentiable):
+            mi.TraversalCallback.__init__(self)
+            self.properties = dict() if properties is None else properties
+            self.hierarchy = dict() if hierarchy is None else hierarchy
+            self.prefixes = set() if prefixes is None else prefixes
+
+            if name is not None:
+                ctr, name_len = 1, len(name)
+                while name in self.prefixes:
+                    name = "%s_%i" % (name[:name_len], ctr)
+                    ctr += 1
+                self.prefixes.add(name)
+
+            self.name = name
+            self.node = node
+            self.depth = depth
+            self.hierarchy[node] = (parent, depth)
+            self.flags = flags
+
+        def put(self, name, value, flags, cpptype=None):
+            """Unified method to register both objects and values with the traversal callback."""
+            # Import Object locally to avoid circular import
+            if isinstance(value, mi.Object):
+                self.put_object(name, value, flags)
+            else:
+                self.put_value(name, value, flags, cpptype)
+
+        def put_value(self, name, ptr, flags, cpptype):
+            name = name if self.name is None else self.name + '.' + name
+
+            flags = self.flags | flags
+            # Non differentiable parameters shouldn't be flagged as discontinuous
+            if (flags & mi.ParamFlags.NonDifferentiable) != 0:
+                flags = flags & ~mi.ParamFlags.Discontinuous
+
+            self.properties[name] = (ptr, cpptype, self.node, self.flags | flags)
+
+        def put_object(self, name, obj, flags):
+            if obj is None or obj in self.hierarchy:
+                return
+            cb = SceneTraversal(
+                node=obj,
+                parent=self.node,
+                properties=self.properties,
+                hierarchy=self.hierarchy,
+                prefixes=self.prefixes,
+                name=name if self.name is None else self.name + '.' + name,
+                depth=self.depth + 1,
+                flags=self.flags | flags
+            )
+            obj.traverse(cb)
+
+    cb = SceneTraversal(node)
+    node.traverse(cb)
+
+    return SceneParameters(cb.properties, cb.hierarchy)
 
 # ------------------------------------------------------------------------------
 #                          Rendering Custom Operation
@@ -296,6 +371,12 @@ class _RenderOp(dr.CustomOp):
                 develop=True,
                 evaluate=False
             )
+            # After rendering an image, the sampler state is dependent on the
+            # rendering loop. When a frozen function is recorded, the sampler
+            # might be evaluated, which causes parts of the rendering loop to
+            # be re-evaluated. To prevent this overhead, we reset the state
+            # of the sampler, by re-seeding it.
+            sensor.sampler().seed(0, 1)
             return res
 
     def forward(self):
@@ -327,7 +408,7 @@ def render(scene: mi.Scene,
     ``dr.backward()``).
 
     Under the hood, the differentiation operation will be intercepted and routed
-    to `mitsuba.SamplingIntegrator.render_forward` or `mitsuba.SamplingIntegrator.render_backward`,
+    to ``Integrator.render_forward()`` or ``Integrator.render_backward()``,
     which evaluate the derivative using either naive AD or a more specialized
     differential simulation.
 
@@ -341,51 +422,54 @@ def render(scene: mi.Scene,
     ``prb`` (Path Replay Backpropagation) that are specifically designed for
     differentiation can be significantly more efficient.
 
-    Args:
-        scene: Reference to the scene being rendered in a differentiable
-            manner.
+    Parameter ``scene`` (``mi.Scene``):
+        Reference to the scene being rendered in a differentiable manner.
 
-        params: An optional container of scene parameters that should receive
-            gradients. This argument isn't optional when computing forward
-            mode derivatives. It should be an instance of type
-            `mitsuba.SceneParameters` obtained via `mitsuba.traverse()`.
-            Gradient tracking must be explicitly enabled on these parameters
-            using ``dr.enable_grad(params['parameter_name'])`` (i.e.
-            ``render()`` will not do this for you). Furthermore,
-            ``dr.set_grad(...)`` must be used to associate specific gradient
-            values with parameters if forward mode derivatives are desired.
-            When the scene parameters are derived from other variables that
-            have gradient tracking enabled, gradient values should be
-            propagated to the scene parameters by calling
-            ``dr.forward_to(params, dr.ADFlag.ClearEdges)`` before calling
-            this function.
+    Parameter ``params``:
+       An optional container of scene parameters that should receive gradients.
+       This argument isn't optional when computing forward mode derivatives. It
+       should be an instance of type ``mi.SceneParameters`` obtained via
+       ``mi.traverse()``. Gradient tracking must be explicitly enabled on these
+       parameters using ``dr.enable_grad(params['parameter_name'])`` (i.e.
+       ``render()`` will not do this for you). Furthermore, ``dr.set_grad(...)``
+       must be used to associate specific gradient values with parameters if
+       forward mode derivatives are desired. When the scene parameters are
+       derived from other variables that have gradient tracking enabled,
+       gradient values should be propagated to the scene parameters by calling
+       ``dr.forward_to(params, dr.ADFlag.ClearEdges)`` before calling this
+       function.
 
-        sensor: Specify a sensor or a (sensor index) to render the scene from
-            a different viewpoint. By default, the first sensor within the
-            scene description (index 0) will take precedence.
+    Parameter ``sensor`` (``int``, ``mi.Sensor``):
+        Specify a sensor or a (sensor index) to render the scene from a
+        different viewpoint. By default, the first sensor within the scene
+        description (index 0) will take precedence.
 
-        integrator: Optional parameter to override the rendering technique to
-            be used. By default, the integrator specified in the original
-            scene description will be used.
+    Parameter ``integrator`` (``mi.Integrator``):
+        Optional parameter to override the rendering technique to be used. By
+        default, the integrator specified in the original scene description will
+        be used.
 
-        seed: This parameter controls the initialization of the random
-            number generator during the primal rendering step. It is crucial
-            that you specify different seeds (e.g., an increasing sequence)
-            if subsequent calls should produce statistically independent
-            images (e.g. to de-correlate gradient-based optimization steps).
+    Parameter ``seed`` (``mi.UInt32``)
+        This parameter controls the initialization of the random number
+        generator during the primal rendering step. It is crucial that you
+        specify different seeds (e.g., an increasing sequence) if subsequent
+        calls should produce statistically independent images (e.g. to
+        de-correlate gradient-based optimization steps).
 
-        seed_grad: This parameter is analogous to the ``seed`` parameter but
-            targets the differential simulation phase. If not specified, the
-            implementation will automatically compute a suitable value from
-            the primal ``seed``.
+    Parameter ``seed_grad`` (``mi.UInt32``)
+        This parameter is analogous to the ``seed`` parameter but targets the
+        differential simulation phase. If not specified, the implementation will
+        automatically compute a suitable value from the primal ``seed``.
 
-        spp: Optional parameter to override the number of samples per pixel
-            for the primal rendering step. The value provided within the
-            original scene specification takes precedence if ``spp=0``.
+    Parameter ``spp`` (``int``):
+        Optional parameter to override the number of samples per pixel for the
+        primal rendering step. The value provided within the original scene
+        specification takes precedence if ``spp=0``.
 
-        spp_grad: This parameter is analogous to the ``seed`` parameter but
-            targets the differential simulation phase. If not specified, the
-            implementation will copy the value from ``spp``.
+    Parameter ``spp_grad`` (``int``):
+        This parameter is analogous to the ``seed`` parameter but targets the
+        differential simulation phase. If not specified, the implementation will
+        copy the value from ``spp``.
     """
 
     if params is not None and not isinstance(params, mi.SceneParameters):
@@ -444,9 +528,8 @@ def render(scene: mi.Scene,
 
 def convert_to_bitmap(data, uint8_srgb=True):
     """
-    Convert the RGB image in ``data`` to a `mitsuba.Bitmap`. ``uint8_srgb``
-    defines whether the resulting bitmap should be translated to a uint8 sRGB
-    bitmap.
+    Convert the RGB image in `data` to a `Bitmap`. `uint8_srgb` defines whether
+    the resulting bitmap should be translated to a uint8 sRGB bitmap.
     """
 
     if isinstance(data, mi.Bitmap):
@@ -464,7 +547,7 @@ def convert_to_bitmap(data, uint8_srgb=True):
 
 def write_bitmap(filename, data, write_async=True, quality=-1):
     """
-    Write the RGB image in ``data`` to a PNG/EXR/.. file.
+    Write the RGB image in `data` to a PNG/EXR/.. file.
     """
     uint8_srgb = filename.endswith('.png') or \
                  filename.endswith('.jpg') or \

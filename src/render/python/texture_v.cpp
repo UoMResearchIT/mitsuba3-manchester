@@ -13,33 +13,25 @@
 MI_VARIANT class PyTexture : public Texture<Float, Spectrum> {
 public:
     MI_IMPORT_TYPES(Texture)
-    NB_TRAMPOLINE(Texture);
+    NB_TRAMPOLINE(Texture, 17);
 
-    PyTexture(const Properties &props) : Texture(props) {
-        nb::handle self = nb_trampoline.base();
-        if (self.is_valid())
-            m_class_name = nb::type_name(self.type()).c_str();
-        else
-            m_class_name = Texture::ClassName;
-    }
-
-    std::string_view class_name() const override { return m_class_name; }
+    PyTexture(const Properties &props) : Texture(props) {}
 
     UnpolarizedSpectrum eval(const SurfaceInteraction3f &si,
                              Mask active = true) const override {
-        NB_OVERRIDE(eval, si, active);
+        NB_OVERRIDE_PURE(eval, si, active);
     }
 
     std::pair<Wavelength, UnpolarizedSpectrum>
     sample_spectrum(const SurfaceInteraction3f &si, const Wavelength &sample,
                     Mask active = true) const override {
         using Return = std::pair<Wavelength, UnpolarizedSpectrum>;
-        NB_OVERRIDE(sample_spectrum, si, sample, active);
+        NB_OVERRIDE_PURE(sample_spectrum, si, sample, active);
     }
 
     Wavelength pdf_spectrum(const SurfaceInteraction3f &si,
                             Mask active = true) const override {
-        NB_OVERRIDE(pdf_spectrum, si, active);
+        NB_OVERRIDE_PURE(pdf_spectrum, si, active);
     }
 
     std::pair<Point2f, Float>
@@ -54,25 +46,25 @@ public:
 
     Float eval_1(const SurfaceInteraction3f &si,
                  Mask active = true) const override {
-        NB_OVERRIDE(eval_1, si, active);
+        NB_OVERRIDE_PURE(eval_1, si, active);
     }
 
     Vector2f eval_1_grad(const SurfaceInteraction3f &si,
                          Mask active = true) const override {
-        NB_OVERRIDE(eval_1_grad, si, active);
+        NB_OVERRIDE_PURE(eval_1_grad, si, active);
     }
 
     Color3f eval_3(const SurfaceInteraction3f &si,
                    Mask active = true) const override {
-        NB_OVERRIDE(eval_3, si, active);
+        NB_OVERRIDE_PURE(eval_3, si, active);
     }
 
     Float mean() const override {
-        NB_OVERRIDE(mean);
+        NB_OVERRIDE_PURE(mean);
     }
 
     ScalarFloat max() const override {
-        NB_OVERRIDE(max);
+        NB_OVERRIDE_PURE(max);
     }
 
     ScalarVector2i resolution() const override {
@@ -80,7 +72,7 @@ public:
     }
 
     ScalarFloat spectral_resolution() const override {
-        NB_OVERRIDE(spectral_resolution);
+        NB_OVERRIDE_PURE(spectral_resolution);
     }
 
     ScalarVector2f wavelength_range() const override {
@@ -92,7 +84,7 @@ public:
     }
 
     std::string to_string() const override {
-        NB_OVERRIDE_NAME("__repr__", to_string);
+        NB_OVERRIDE(to_string);
     }
 
     void traverse(TraversalCallback *cb) override {
@@ -103,9 +95,7 @@ public:
         NB_OVERRIDE(parameters_changed, keys);
     }
 
-private:
-    /// Name of the Python class implementing this plugin
-    std::string m_class_name;
+    DR_TRAMPOLINE_TRAVERSE_CB(Texture)
 };
 
 template <typename Ptr, typename Cls> void bind_texture_generic(Cls &cls) {
@@ -182,7 +172,6 @@ MI_PY_EXPORT(Texture) {
         dr::ArrayBinding b;
         auto texture_ptr = dr::bind_array_t<TexturePtr>(b, m, "TexturePtr");
         bind_texture_generic<TexturePtr>(texture_ptr);
-        texture_ptr.freeze();
     }
 
     drjit::bind_traverse(texture);

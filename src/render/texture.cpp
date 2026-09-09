@@ -7,7 +7,7 @@
 NAMESPACE_BEGIN(mitsuba)
 
 // =======================================================================
-// Texture base implementation
+//! Texture base implementation
 // =======================================================================
 
 MI_VARIANT Texture<Float, Spectrum>::Texture(const Properties &props)
@@ -36,9 +36,7 @@ MI_VARIANT Float Texture<Float, Spectrum>::eval_1(const SurfaceInteraction3f &, 
 
 MI_VARIANT typename Texture<Float, Spectrum>::Vector2f
 Texture<Float, Spectrum>::eval_1_grad(const SurfaceInteraction3f &, Mask) const {
-    Throw("%s::eval_1_grad(): not implemented! Only textures that represent "
-          "a single-channel image or height field provide this operation.",
-          class_name());
+    NotImplementedError("eval_1_grad");
 }
 
 MI_VARIANT typename Texture<Float, Spectrum>::Color3f

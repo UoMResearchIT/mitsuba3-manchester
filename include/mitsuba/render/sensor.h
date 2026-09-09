@@ -21,41 +21,43 @@ public:
     MI_IMPORT_BASE(Endpoint, sample_ray, m_needs_sample_3)
 
     // =============================================================
-    // Sensor-specific sampling functions
+    //! @{ \name Sensor-specific sampling functions
     // =============================================================
 
     /**
-     * Importance sample a ray differential proportional to the sensor's
+     * \brief Importance sample a ray differential proportional to the sensor's
      * sensitivity profile.
      *
      * The sensor profile is a six-dimensional quantity that depends on time,
      * wavelength, surface position, and direction. This function takes a given
      * time value and five uniformly distributed samples on the interval [0, 1]
-     * and warps them so that the returned ray follows the profile. Any
+     * and warps them so that the returned ray the profile. Any
      * discrepancies between ideal and actual sampled profiles are absorbed into
      * a spectral importance weight that is returned along with the ray.
      *
-     * In contrast to `Endpoint.sample_ray()`, this function returns
+     * In contrast to \ref Endpoint::sample_ray(), this function returns
      * differentials with respect to the X and Y axis in screen space.
      *
-     * Args:
-     *     time: The scene time associated with the ray_differential to be sampled
+     * \param time
+     *    The scene time associated with the ray_differential to be sampled
      *
-     *     sample1: A uniformly distributed 1D value that is used to sample the spectral
-     *         dimension of the sensitivity profile.
+     * \param sample1
+     *     A uniformly distributed 1D value that is used to sample the spectral
+     *     dimension of the sensitivity profile.
      *
-     *     sample2: This argument corresponds to the sample position in fractional pixel
-     *         coordinates relative to the crop window of the underlying film.
+     * \param sample2
+     *    This argument corresponds to the sample position in fractional pixel
+     *    coordinates relative to the crop window of the underlying film.
      *
-     *     sample3: A uniformly distributed sample on the domain
-     *         :math:`[0,1]^2`. This argument determines the position on the
-     *         aperture of the sensor. It is ignored if
-     *         ``needs_sample_3() == false``.
+     * \param sample3
+     *    A uniformly distributed sample on the domain <tt>[0,1]^2</tt>. This
+     *    argument determines the position on the aperture of the sensor. This
+     *    argument is ignored if <tt>needs_sample_3() == false</tt>.
      *
-     * Returns:
-     *     The sampled ray differential and (potentially spectrally varying)
-     *     importance weights. The latter account for the difference between the
-     *     sensor profile and the actual used sampling density function.
+     * \return
+     *    The sampled ray differential and (potentially spectrally varying)
+     *    importance weights. The latter account for the difference between the
+     *    sensor profile and the actual used sampling density function.
      */
     virtual std::pair<RayDifferential3f, Spectrum>
     sample_ray_differential(Float time, Float sample1,
@@ -63,7 +65,7 @@ public:
                             Mask active = true) const;
 
     /**
-     * Importance sample a set of wavelengths proportional to the
+     * \brief Importance sample a set of wavelengths proportional to the
      * sensitivity spectrum.
      *
      * Any discrepancies between ideal and actual sampled profile are absorbed
@@ -72,23 +74,24 @@ public:
      * In RGB and monochromatic modes, since no wavelengths need to be sampled,
      * this simply returns an empty vector and the value 1.
      *
-     * Args:
-     *     sample: A uniformly distributed 1D value that is used to sample the spectral
-     *         dimension of the sensitivity profile.
+     * \param sample
+     *     A uniformly distributed 1D value that is used to sample the spectral
+     *     dimension of the sensitivity profile.
      *
-     * Returns:
-     *     The set of sampled wavelengths and importance weights.
-     *     The latter account for the difference between the
-     *     profile and the actual used sampling density function.
+     * \return
+     *    The set of sampled wavelengths and importance weights.
+     *    The latter account for the difference between the
+     *    profile and the actual used sampling density function.
      */
     std::pair<Wavelength, Spectrum>
     sample_wavelengths(const SurfaceInteraction3f &si, Float sample,
                        Mask active = true) const override;
 
+    //! @}
     // =============================================================
 
     // =============================================================
-    // Additional query functions
+    //! @{ \name Additional query functions
     // =============================================================
 
     /// Return the time value of the shutter opening event
@@ -100,49 +103,33 @@ public:
     /// Does the sampling technique require a sample for the aperture position?
     bool needs_aperture_sample() const { return m_needs_sample_3; }
 
-    /// Return the `Film` instance associated with this sensor
+    /// Return the \ref Film instance associated with this sensor
     Film *film() { return m_film; }
 
-    /// Return the `Film` instance associated with this sensor (const)
+    /// Return the \ref Film instance associated with this sensor (const)
     const Film *film() const { return m_film.get(); }
 
-    /// Replace the film
-    void set_film(Film *film) {
-        m_film = film;
-        parameters_changed({ "film" });
-    }
-
     /**
-     * Replace the sensor-to-world transformation.
+     * \brief Return the sensor's sample generator
      *
-     * This convenience method replaces the camera view
-     * matrix with a scalar (host-side) value.
-     */
-    void set_world_transform(const ScalarAffineTransform4f &to_world) {
-        this->m_to_world = to_world;
-        dr::make_opaque(this->m_to_world);
-    }
-
-    /**
-     * Return the sensor's sample generator
-     *
-     * This is the *root* sampler, which will later be forked a number of times
+     * This is the \a root sampler, which will later be forked a number of times
      * to provide each participating worker thread with its own instance (see
-     * `Sensor.sampler()`). Therefore, this sampler should never be used for
+     * \ref Scene::sampler()). Therefore, this sampler should never be used for
      * anything except creating forks.
      */
     ref<Sampler> sampler() { return m_sampler; }
 
     /**
-     * Return the sensor's sampler (const version).
+     * \brief Return the sensor's sampler (const version).
      *
-     * This is the *root* sampler, which will later be cloned a number of times
+     * This is the \a root sampler, which will later be cloned a number of times
      * to provide each participating worker thread with its own instance (see
-     * `Sensor.sampler()`). Therefore, this sampler should never be used for
+     * \ref Scene::sampler()). Therefore, this sampler should never be used for
      * anything except creating clones.
      */
     ref<const Sampler> sampler() const { return m_sampler.get(); }
 
+    //! @}
     // =============================================================
 
     void traverse(TraversalCallback *cb) override {
@@ -176,10 +163,11 @@ protected:
     MI_TRAVERSE_CB(Base, m_film, m_sampler, m_srf)
 };
 
+//! @}
 // -----------------------------------------------------------------------
 
 /**
- * Projective camera interface
+ * \brief Projective camera interface
  *
  * This class provides an abstract interface to several types of sensors that
  * are commonly used in computer graphics, such as perspective and orthographic
@@ -189,8 +177,10 @@ protected:
  * world to clip space transformation can be explained using only linear
  * operations on homogeneous coordinates.
  *
- * A useful feature of `ProjectiveCamera` sensors is that their view can be
+ * A useful feature of \ref ProjectiveCamera sensors is that their view can be
  * rendered using the traditional OpenGL pipeline.
+ *
+ * \ingroup librender
  */
 template <typename Float, typename Spectrum>
 class MI_EXPORT_LIB ProjectiveCamera : public Sensor<Float, Spectrum> {
@@ -233,7 +223,7 @@ protected:
 };
 
 // ========================================================================
-// Functionality common to perspective cameras, projectors, etc.
+//! @{ \name Functionality common to perspective cameras, projectors, etc.
 // ========================================================================
 
 /// Helper function to parse the field of view field of a camera
@@ -316,6 +306,7 @@ orthographic_projection(const Vector<int, 2> &film_size,
            AffineTransform4f::orthographic(near_clip, far_clip);
 }
 
+//! @}
 // ========================================================================
 
 MI_EXTERN_CLASS(Sensor)
@@ -323,7 +314,7 @@ MI_EXTERN_CLASS(ProjectiveCamera)
 NAMESPACE_END(mitsuba)
 
 // -----------------------------------------------------------------------
-// Enables vectorized method calls on Dr.Jit arrays of sensors
+//! @{ \name Enables vectorized method calls on Dr.Jit arrays of sensors
 // -----------------------------------------------------------------------
 
 DRJIT_CALL_TEMPLATE_BEGIN(mitsuba::Sensor)

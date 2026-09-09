@@ -9,14 +9,14 @@
 NAMESPACE_BEGIN(mitsuba)
 
 /**
- * Discrete 1D probability distribution
+ * \brief Discrete 1D probability distribution
  *
  * This data structure represents a discrete 1D probability distribution and
  * provides various routines for transforming uniformly distributed samples so
  * that they follow the stored distribution. Note that unnormalized
  * probability mass functions (PMFs) will automatically be normalized during
  * initialization. The associated scale factor can be retrieved using the
- * function `normalization()`.
+ * function \ref normalization().
  */
 template <typename Value> struct DiscreteDistribution: drjit::TraversableBase {
     using Float = std::conditional_t<dr::is_static_array_v<Value>,
@@ -72,10 +72,10 @@ public:
     /// Return the unnormalized cumulative distribution function (const version)
     const FloatStorage &cdf() const { return m_cdf; }
 
-    /// Return the original sum of PMF entries before normalization
+    /// \brief Return the original sum of PMF entries before normalization
     Float sum() const { return m_sum; }
 
-    /// Return the normalization factor (i.e. the inverse of `sum()`)
+    /// \brief Return the normalization factor (i.e. the inverse of \ref sum())
     Float normalization() const { return m_normalization; }
 
     /// Return the number of entries
@@ -84,34 +84,34 @@ public:
     /// Is the distribution object empty/uninitialized?
     bool empty() const { return m_pmf.empty(); }
 
-    /// Evaluate the unnormalized probability mass function (PMF) at index ``index``
+    /// Evaluate the unnormalized probability mass function (PMF) at index \c index
     Value eval_pmf(Index index, Mask active = true) const {
         return dr::gather<Value>(m_pmf, index, active);
     }
 
-    /// Evaluate the normalized probability mass function (PMF) at index ``index``
+    /// Evaluate the normalized probability mass function (PMF) at index \c index
     Value eval_pmf_normalized(Index index, Mask active = true) const {
         return dr::gather<Value>(m_pmf, index, active) * m_normalization;
     }
 
-    /// Evaluate the unnormalized cumulative distribution function (CDF) at index ``index``
+    /// Evaluate the unnormalized cumulative distribution function (CDF) at index \c index
     Value eval_cdf(Index index, Mask active = true) const {
         return dr::gather<Value>(m_cdf, index, active);
     }
 
-    /// Evaluate the normalized cumulative distribution function (CDF) at index ``index``
+    /// Evaluate the normalized cumulative distribution function (CDF) at index \c index
     Value eval_cdf_normalized(Index index, Mask active = true) const {
         return dr::gather<Value>(m_cdf, index, active) * m_normalization;
     }
 
     /**
-     * Transform a uniformly distributed sample to the stored
+     * \brief Transform a uniformly distributed sample to the stored
      * distribution
      *
-     * Args:
-     *     sample: A uniformly distributed sample on the interval [0, 1].
+     * \param sample
+     *     A uniformly distributed sample on the interval [0, 1].
      *
-     * Returns:
+     * \return
      *     The discrete index associated with the sample
      */
     Index sample(Value sample, Mask active = true) const {
@@ -135,64 +135,64 @@ public:
     }
 
     /**
-     * Transform a uniformly distributed sample to the stored
+     * \brief Transform a uniformly distributed sample to the stored
      * distribution
      *
-     * Args:
-     *     sample: A uniformly distributed sample on the interval [0, 1].
+     * \param value
+     *     A uniformly distributed sample on the interval [0, 1].
      *
-     * Returns:
+     * \return
      *     A tuple consisting of
      *
      *     1. the discrete index associated with the sample, and
      *     2. the normalized probability value of the sample.
      */
-    std::pair<Index, Value> sample_pmf(Value sample, Mask active = true) const {
+    std::pair<Index, Value> sample_pmf(Value value, Mask active = true) const {
         MI_MASK_ARGUMENT(active);
 
-        Index index = this->sample(sample, active);
+        Index index = sample(value, active);
         return { index, eval_pmf_normalized(index) };
     }
 
     /**
-     * Transform a uniformly distributed sample to the stored
+     * \brief Transform a uniformly distributed sample to the stored
      * distribution
      *
-     * The original sample is adjusted so that it can be reused as a
+     * The original sample is value adjusted so that it can be reused as a
      * uniform variate.
      *
-     * Args:
-     *     sample: A uniformly distributed sample on the interval [0, 1].
+     * \param value
+     *     A uniformly distributed sample on the interval [0, 1].
      *
-     * Returns:
+     * \return
      *     A tuple consisting of
      *
      *     1. the discrete index associated with the sample, and
      *     2. the re-scaled sample value.
      */
     std::pair<Index, Value>
-    sample_reuse(Value sample, Mask active = true) const {
+    sample_reuse(Value value, Mask active = true) const {
         MI_MASK_ARGUMENT(active);
 
-        Index index = this->sample(sample, active);
+        Index index = sample(value, active);
 
         Value pmf = eval_pmf_normalized(index, active),
               cdf = eval_cdf_normalized(index - 1, active && index > 0);
 
-        return { index, (sample - cdf) / pmf };
+        return { index, (value - cdf) / pmf };
     }
 
     /**
-     * Transform a uniformly distributed sample to the stored
+     * \brief Transform a uniformly distributed sample to the stored
      * distribution.
      *
-     * The original sample is adjusted so that it can be reused as a
+     * The original sample is value adjusted so that it can be reused as a
      * uniform variate.
      *
-     * Args:
-     *     sample: A uniformly distributed sample on the interval [0, 1].
+     * \param value
+     *     A uniformly distributed sample on the interval [0, 1].
      *
-     * Returns:
+     * \return
      *     A tuple consisting of
      *
      *     1. the discrete index associated with the sample
@@ -200,17 +200,17 @@ public:
      *     3. the normalized probability value of the sample
      */
     std::tuple<Index, Value, Value>
-    sample_reuse_pmf(Value sample, Mask active = true) const {
+    sample_reuse_pmf(Value value, Mask active = true) const {
         MI_MASK_ARGUMENT(active);
 
-        auto [index, pdf] = sample_pmf(sample, active);
+        auto [index, pdf] = sample_pmf(value, active);
 
         Value pmf = eval_pmf_normalized(index, active),
               cdf = eval_cdf_normalized(index - 1, active && index > 0);
 
         return {
             index,
-            (sample - cdf) / pmf,
+            (value - cdf) / pmf,
             pmf
         };
     }
@@ -278,7 +278,7 @@ private:
 };
 
 /**
- * Continuous 1D probability distribution defined in terms of a regularly
+ * \brief Continuous 1D probability distribution defined in terms of a regularly
  * sampled linear interpolant
  *
  * This data structure represents a continuous 1D probability distribution that
@@ -287,7 +287,7 @@ private:
  * samples so that they follow the stored distribution. Note that unnormalized
  * probability density functions (PDFs) will automatically be normalized during
  * initialization. The associated scale factor can be retrieved using the
- * function `normalization()`.
+ * function \ref normalization().
  */
 template <typename Value> struct ContinuousDistribution: drjit::TraversableBase {
     using Float = std::conditional_t<dr::is_static_array_v<Value>,
@@ -306,7 +306,7 @@ public:
     /// Create an uninitialized ContinuousDistribution instance
     ContinuousDistribution() { }
 
-    /// Initialize from a given density function on the interval ``range``
+    /// Initialize from a given density function on the interval \c range
     ContinuousDistribution(const ScalarVector2f &range,
                            const FloatStorage &pdf)
         : m_pdf(pdf), m_range(range) {
@@ -354,10 +354,10 @@ public:
     /// Return the unnormalized discrete cumulative distribution function over intervals (const version)
     const FloatStorage &cdf() const { return m_cdf; }
 
-    /// Return the original integral of PDF entries before normalization
+    /// \brief Return the original integral of PDF entries before normalization
     Float integral() const { return m_integral; }
 
-    /// Return the normalization factor (i.e. the inverse of `integral()`)
+    /// \brief Return the normalization factor (i.e. the inverse of \ref sum())
     Float normalization() const { return m_normalization; }
 
     /// Return the number of discretizations
@@ -366,7 +366,7 @@ public:
     /// Is the distribution object empty/uninitialized?
     bool empty() const { return m_pdf.empty(); }
 
-    /// Evaluate the unnormalized probability density function (PDF) at position ``x``
+    /// Evaluate the unnormalized probability mass function (PDF) at position \c x
     Value eval_pdf(Value x, Mask active = true) const {
         MI_MASK_ARGUMENT(active);
 
@@ -384,14 +384,14 @@ public:
         return dr::fmadd(w0, y0, w1 * y1);
     }
 
-    /// Evaluate the normalized probability density function (PDF) at position ``x``
+    /// Evaluate the normalized probability mass function (PDF) at position \c x
     Value eval_pdf_normalized(Value x, Mask active) const {
         MI_MASK_ARGUMENT(active);
 
         return eval_pdf(x, active) * m_normalization;
     }
 
-    /// Evaluate the unnormalized cumulative distribution function (CDF) at position ``p``
+    /// Evaluate the unnormalized cumulative distribution function (CDF) at position \c p
     Value eval_cdf(Value x_, Mask active = true) const {
         MI_MASK_ARGUMENT(active);
 
@@ -409,7 +409,7 @@ public:
         return cdf;
     }
 
-    /// Evaluate the unnormalized cumulative distribution function (CDF) at position ``p``
+    /// Evaluate the unnormalized cumulative distribution function (CDF) at position \c p
     Value eval_cdf_normalized(Value x, Mask active = true) const {
         MI_MASK_ARGUMENT(active);
 
@@ -417,13 +417,13 @@ public:
     }
 
     /**
-     * Transform a uniformly distributed sample to the stored
+     * \brief Transform a uniformly distributed sample to the stored
      * distribution
      *
-     * Args:
-     *     sample: A uniformly distributed sample on the interval [0, 1].
+     * \param sample
+     *     A uniformly distributed sample on the interval [0, 1].
      *
-     * Returns:
+     * \return
      *     The sampled position.
      */
     Value sample(Value sample, Mask active = true) const {
@@ -459,13 +459,13 @@ public:
     }
 
     /**
-     * Transform a uniformly distributed sample to the stored
+     * \brief Transform a uniformly distributed sample to the stored
      * distribution
      *
-     * Args:
-     *     sample: A uniformly distributed sample on the interval [0, 1].
+     * \param sample 
+     *     A uniformly distributed sample on the interval [0, 1].
      *
-     * Returns:
+     * \return
      *     A tuple consisting of
      *
      *     1. the sampled position.
@@ -614,7 +614,7 @@ private:
 };
 
 /**
- * Continuous 1D probability distribution defined in terms of an
+ * \brief Continuous 1D probability distribution defined in terms of an
  * *irregularly* sampled linear interpolant
  *
  * This data structure represents a continuous 1D probability distribution that
@@ -623,7 +623,7 @@ private:
  * samples so that they follow the stored distribution. Note that unnormalized
  * probability density functions (PDFs) will automatically be normalized during
  * initialization. The associated scale factor can be retrieved using the
- * function `normalization()`.
+ * function \ref normalization().
  */
 template <typename Value> struct IrregularContinuousDistribution : public drjit::TraversableBase{
     using Float = std::conditional_t<dr::is_static_array_v<Value>,
@@ -642,7 +642,7 @@ public:
     /// Create an uninitialized IrregularContinuousDistribution instance
     IrregularContinuousDistribution() { }
 
-    /// Initialize from a given density function discretized on nodes ``nodes``
+    /// Initialize from a given density function discretized on nodes \c nodes
     IrregularContinuousDistribution(const FloatStorage &nodes,
                                     const FloatStorage &pdf)
         : m_nodes(nodes), m_pdf(pdf) {
@@ -693,10 +693,10 @@ public:
     /// Return the unnormalized discrete cumulative distribution function over intervals (const version)
     const FloatStorage &cdf() const { return m_cdf; }
 
-    /// Return the original integral of PDF entries before normalization
+    /// \brief Return the original integral of PDF entries before normalization
     Float integral() const { return m_integral; }
 
-    /// Return the normalization factor (i.e. the inverse of `integral()`)
+    /// \brief Return the normalization factor (i.e. the inverse of \ref sum())
     Float normalization() const { return m_normalization; }
 
     /// Return the number of discretizations
@@ -711,7 +711,7 @@ public:
     /// Return the range of the distribution (const version)
     const ScalarVector2f &range() const { return m_range; }
 
-    /// Evaluate the unnormalized probability density function (PDF) at position ``x``
+    /// Evaluate the unnormalized probability mass function (PDF) at position \c x
     Value eval_pdf(Value x, Mask active = true) const {
         MI_MASK_ARGUMENT(active);
 
@@ -736,14 +736,14 @@ public:
         return dr::select(active, dr::fmadd(x, y1 - y0, y0), 0.f);
     }
 
-    /// Evaluate the normalized probability density function (PDF) at position ``x``
+    /// Evaluate the normalized probability mass function (PDF) at position \c x
     Value eval_pdf_normalized(Value x, Mask active) const {
         MI_MASK_ARGUMENT(active);
 
         return eval_pdf(x, active) * m_normalization;
     }
 
-    /// Evaluate the unnormalized cumulative distribution function (CDF) at position ``p``
+    /// Evaluate the unnormalized cumulative distribution function (CDF) at position \c p
     Value eval_cdf(Value x, Mask active = true) const {
         MI_MASK_ARGUMENT(active);
 
@@ -769,7 +769,7 @@ public:
         return cdf;
     }
 
-    /// Evaluate the unnormalized cumulative distribution function (CDF) at position ``p``
+    /// Evaluate the unnormalized cumulative distribution function (CDF) at position \c p
     Value eval_cdf_normalized(Value x, Mask active = true) const {
         MI_MASK_ARGUMENT(active);
 
@@ -777,13 +777,13 @@ public:
     }
 
     /**
-     * Transform a uniformly distributed sample to the stored
+     * \brief Transform a uniformly distributed sample to the stored
      * distribution
      *
-     * Args:
-     *     sample: A uniformly distributed sample on the interval [0, 1].
+     * \param sample
+     *     A uniformly distributed sample on the interval [0, 1].
      *
-     * Returns:
+     * \return
      *     The sampled position.
      */
     Value sample(Value sample, Mask active = true) const {
@@ -822,13 +822,13 @@ public:
     }
 
     /**
-     * Transform a uniformly distributed sample to the stored
+     * \brief Transform a uniformly distributed sample to the stored
      * distribution
      *
-     * Args:
-     *     sample: A uniformly distributed sample on the interval [0, 1].
+     * \param sample
+     *     A uniformly distributed sample on the interval [0, 1].
      *
-     * Returns:
+     * \return
      *     A tuple consisting of
      *
      *     1. the sampled position.
@@ -871,7 +871,7 @@ public:
     }
 
     /**
-     * Return the minimum resolution of the discretization
+     * \brief Return the minimum resolution of the discretization
      */
     ScalarFloat interval_resolution() const {
         return m_interval_size;

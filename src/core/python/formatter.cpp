@@ -8,7 +8,7 @@
 // Trampoline for derived types implemented in Python
 class PyFormatter : public Formatter {
 public:
-    NB_TRAMPOLINE(Formatter);
+    NB_TRAMPOLINE(Formatter, 1);
 
     std::string format(mitsuba::LogLevel level, const char *cname,
             const char *fname, int line,

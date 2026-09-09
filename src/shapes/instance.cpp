@@ -81,8 +81,7 @@ public:
     }
 
     void traverse(TraversalCallback *cb) override {
-        cb->put("to_world", m_to_world,
-                ParamFlags::Differentiable | ParamFlags::Discontinuous);
+        cb->put("to_world", m_to_world, ParamFlags::NonDifferentiable);
     }
 
     void parameters_changed(const std::vector<std::string> &keys) override {
@@ -112,10 +111,11 @@ public:
         return m_shapegroup->primitive_count();
     }
 
+    //! @}
     // =============================================================
 
     // =============================================================
-    // Ray tracing routines
+    //! @{ \name Ray tracing routines
     // =============================================================
 
     template <typename FloatP, typename Ray3fP>
@@ -147,6 +147,103 @@ public:
 
     MI_SHAPE_DEFINE_RAY_INTERSECT_METHODS()
 
+    SurfaceInteraction3f compute_surface_interaction(const Ray3f &ray,
+                                                     const PreliminaryIntersection3f &pi,
+                                                     uint32_t ray_flags,
+                                                     uint32_t recursion_depth,
+                                                     Mask active) const override {
+        MI_MASK_ARGUMENT(active);
+
+        const AffineTransform4f& to_world  = m_to_world.value();
+        AffineTransform4f to_object = to_world.inverse();
+
+        constexpr bool IsDiff = dr::is_diff_v<Float>;
+        bool grad_enabled = dr::grad_enabled(to_world);
+
+        if constexpr (IsDiff) {
+            if (grad_enabled && m_shapegroup->parameters_grad_enabled())
+                Throw("Cannot differentiate instance parameters and shapegroup "
+                      "internal parameters at the same time!");
+        }
+
+        // Nested instancing is not supported
+        if (recursion_depth > 0)
+            return dr::zeros<SurfaceInteraction3f>();
+
+        bool detach_shape = has_flag(ray_flags, RayFlags::DetachShape);
+        bool follow_shape = has_flag(ray_flags, RayFlags::FollowShape);
+
+        /* If necessary, temporally suspend gradient tracking for all shape
+           parameters to construct a surface interaction completely detach from
+           the shape. */
+        dr::suspend_grad<Float> scope(detach_shape, to_world, to_object);
+
+        SurfaceInteraction3f si;
+        {
+            /* Temporally suspend gradient tracking when `to_world` need to be
+               differentiated as the various terms of `si` will be recomputed
+               to account for the motion of `si` already. */
+            dr::suspend_grad<Float> scope2(grad_enabled);
+            si = m_shapegroup->compute_surface_interaction(
+                to_object * ray, pi, ray_flags,
+                recursion_depth, active);
+        }
+
+        // Hit point `si.p` is only attached to the surface motion
+        si.p = to_world * si.p;
+        si.n = dr::normalize(dr::detach(to_world) * si.n);
+        if (likely(has_flag(ray_flags, RayFlags::ShadingFrame)))
+            si.sh_frame.n = dr::normalize(dr::detach(to_world) * si.sh_frame.n);
+
+        if constexpr (IsDiff) {
+            if (follow_shape && grad_enabled) {
+                /* Recompute si.t in a differential manner as the distance
+                   between the ray origin and the hit point following the moving
+                   surface. */
+                si.t = dr::sqrt(dr::squared_norm(si.p - ray.o) / dr::squared_norm(ray.d));
+            } else if (!follow_shape && grad_enabled) {
+                /* Differential recomputation of the intersection of the ray
+                   with the moving plane tangent to the hit point. In this
+                   scenario, it is important that `si.p` stays along the ray as
+                   the surface moves. */
+                si.t = (dr::dot(si.n, si.p) - dr::dot(si.n, ray.o)) / dr::dot(si.n, ray.d);
+                si.p = ray(si.t);
+                // TODO what can we do about the normals? Take into account curvature?
+                // TODO si.uv should be attached but we don't know about the underlying parameterization
+            }
+        }
+
+        if (likely(has_flag(ray_flags, RayFlags::ShadingFrame)))
+            si.initialize_sh_frame();
+
+        if (likely(has_flag(ray_flags, RayFlags::dPdUV))) {
+            si.dp_du = to_world * si.dp_du;
+            si.dp_dv = to_world * si.dp_dv;
+        }
+
+        if (has_flag(ray_flags, RayFlags::dNGdUV) || has_flag(ray_flags, RayFlags::dNSdUV)) {
+            Normal3f n = has_flag(ray_flags, RayFlags::dNGdUV) ? si.n : si.sh_frame.n;
+
+            // Determine the length of the transformed normal before it was re-normalized
+            Normal3f tn = to_world * dr::normalize(to_object * n);
+            Float inv_len = dr::rcp(dr::norm(tn));
+            tn *= inv_len;
+
+            // Apply transform to dn_du and dn_dv
+            si.dn_du = to_world * Normal3f(si.dn_du) * inv_len;
+            si.dn_dv = to_world * Normal3f(si.dn_dv) * inv_len;
+
+            si.dn_du -= tn * dr::dot(tn, si.dn_du);
+            si.dn_dv -= tn * dr::dot(tn, si.dn_dv);
+        }
+
+        si.prim_index = pi.prim_index;
+        si.instance = this;
+
+        return si;
+    }
+
+    //! @}
     // =============================================================
 
     std::string to_string() const override {

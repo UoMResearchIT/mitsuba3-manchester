@@ -50,13 +50,6 @@ Environment emitter (:monosp:`envmap`)
      will be combined using multiple importance sampling (MIS)? This is
      extremely cheap to do and can slightly reduce variance. (Default: false)
 
- * - visible
-   - |bool|
-   - Whether the emitter appears in directly visible (camera) rays. When set
-     to |false|, rays that leave the scene without prior scattering events
-     produce no radiance, while reflections and indirect illumination remain
-     unaffected. (Default: |true|)
-
  * - data
    - |tensor|
    - Tensor array containing the radiance-valued data.
@@ -193,9 +186,10 @@ public:
 
         refresh_halo((ScalarFloat *) bitmap_2->data(), m_res);
 
-        TensorXf tensor(bitmap_2->data(), { (size_t) m_res.y(), (size_t) sw,
-                                            (size_t) PixelWidth });
+        size_t shape[3] = { (size_t) m_res.y(), (size_t) sw, (size_t) PixelWidth };
+        TensorXf tensor(bitmap_2->data(), 3, shape);
         m_texture = Tex(tensor, /* use_accel = */ true,
+                        /* migrate = */ dr::is_jit_v<Float>,
                         dr::FilterMode::Linear, dr::WrapMode::Clamp);
 
         m_scale = props.get<ScalarFloat>("scale", 1.f);
@@ -246,9 +240,8 @@ public:
                 dr::scatter(corrected, dr::gather<PixelData>(array, row + 1u),
                             row + (m_res.x() + 1u));
 
-                m_texture.set_tensor(
-                    TensorXf(corrected, { (size_t) m_res.y(), (size_t) sw,
-                                          (size_t) PixelWidth }));
+                size_t shape[3] = { (size_t) m_res.y(), (size_t) sw, (size_t) PixelWidth };
+                m_texture.set_tensor(TensorXf(corrected, 3, shape), /* migrate */ true);
             } else {
                 refresh_halo((ScalarFloat *) tensor.array().data(), m_res);
                 m_texture.update_inplace();
@@ -308,7 +301,7 @@ public:
         Vector3f d = uv_to_direction(uv, inv_sin_theta);
         pdf *= inv_sin_theta * dr::InvTwoPi<Float> * dr::InvPi<Float>;
 
-        // Unlike `sample_direction()`, ray goes from the envmap toward the scene
+        // Unlike \ref sample_direction, ray goes from the envmap toward the scene
         Vector3f d_global = m_to_world.value() * -d;
 
         // Compute ray origin
@@ -452,7 +445,7 @@ protected:
         return Vector3f(sin_phi * sin_theta, cos_theta, -cos_phi * sin_theta);
     }
 
-    /// Inverse of `uv_to_direction()` (latitude-longitude texture coordinates)
+    /// Inverse of \ref uv_to_direction (latitude-longitude texture coordinates)
     Point2f direction_to_uv(const Vector3f &d) const {
         return Point2f(dr::atan2(d.x(), -d.z()) * dr::InvTwoPi<Float>,
                        dr::safe_acos(d.y()) * dr::InvPi<Float>);

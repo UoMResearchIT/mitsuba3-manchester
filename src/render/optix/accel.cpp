@@ -20,11 +20,11 @@ MiOptixAccelData::~MiOptixAccelData() {
             jit_free(h.buffer);
 }
 
-/// Allocate (once) ``g``'s custom-primitive SBT data buffer in ``data_buffers``
+/// Allocate (once) \c g's custom-primitive SBT data buffer in \c data_buffers
 /// (indexed by the stable ``g.data_slot``) and return its stable device
 /// pointer, without writing its contents. Triangles, curves, and shape groups
 /// carry no SBT data here and return ``nullptr``. The SBT only needs the stable
-/// pointer at pack time; `optix_refresh_shape_data()` writes the data.
+/// pointer at pack time; \ref optix_refresh_shape_data writes the data.
 static void *optix_shape_data_ptr(const ShapeIR &g,
                                   ShapeDataBuffers &data_buffers) {
     if (g.type == ShapeType::ShapeGroup ||
@@ -94,12 +94,12 @@ void fill_hitgroup_records(const std::vector<BlasEntry> &blases,
 }
 
 /**
- * Fill an `OptixBuildInput` from a shape's `describe()`
- * descriptor ``g`` (triangles, curves or custom primitives).
+ * \brief Fill an \ref OptixBuildInput from a shape's \ref describe()
+ * descriptor \c g (triangles, curves or custom primitives).
  *
- * ``ptr_storage`` provides stable backing for device-buffer pointers that OptiX
- * references by address. It must outlive the build that consumes ``build_input``.
- * For host-AABB custom primitives, ``aabb_ptr`` is the device address of this
+ * \c ptr_storage provides stable backing for device-buffer pointers that OptiX
+ * references by address. It must outlive the build that consumes \c build_input.
+ * For host-AABB custom primitives, \c aabb_ptr is the device address of this
  * shape's slice in the shared AABB pool. Shapes with their own device AABB
  * buffer ignore it.
  */
@@ -115,16 +115,14 @@ static void optix_fill_build_input(OptixBuildInput &build_input,
         case ShapeIR::Kind::TrianglesCulled:
             ptr_storage[0] = (void *) g.vertex_ptr;
             build_input.type = OPTIX_BUILD_INPUT_TYPE_TRIANGLES;
-            build_input.triangleArray.vertexFormat        = OPTIX_VERTEX_FORMAT_FLOAT3;
-            build_input.triangleArray.vertexStrideInBytes = (unsigned int) g.vertex_stride;
-            build_input.triangleArray.indexFormat         = OPTIX_INDICES_FORMAT_UNSIGNED_INT3;
-            build_input.triangleArray.numVertices         = (unsigned int) g.vertex_count;
-            build_input.triangleArray.vertexBuffers       = (CUdeviceptr *) &ptr_storage[0];
-            build_input.triangleArray.numIndexTriplets    = (unsigned int) g.face_count;
-            build_input.triangleArray.indexBuffer         = (CUdeviceptr) g.index_ptr;
-            build_input.triangleArray.indexStrideInBytes  = (unsigned int) g.index_stride;
-            build_input.triangleArray.flags               = flags_disable_anyhit;
-            build_input.triangleArray.numSbtRecords       = 1;
+            build_input.triangleArray.vertexFormat     = OPTIX_VERTEX_FORMAT_FLOAT3;
+            build_input.triangleArray.indexFormat      = OPTIX_INDICES_FORMAT_UNSIGNED_INT3;
+            build_input.triangleArray.numVertices      = (unsigned int) g.vertex_count;
+            build_input.triangleArray.vertexBuffers    = (CUdeviceptr *) &ptr_storage[0];
+            build_input.triangleArray.numIndexTriplets = (unsigned int) g.face_count;
+            build_input.triangleArray.indexBuffer      = (CUdeviceptr) g.index_ptr;
+            build_input.triangleArray.flags            = flags_disable_anyhit;
+            build_input.triangleArray.numSbtRecords    = 1;
             break;
 
         case ShapeIR::Kind::BSplineCurve:
@@ -203,11 +201,9 @@ void build_gas(const OptixDeviceContext &context,
         size_t shapes_count = geoms.size();
 
         OptixAccelBuildOptions accel_options = {};
-        // ALLOW_COMPACTION must always be present so that the flags agree with
-        // the builtin curve modules (init_optix_config); `compact` only decides
-        // whether the compaction pass below runs.
-        accel_options.buildFlags = OPTIX_BUILD_FLAG_PREFER_FAST_TRACE |
-                                   OPTIX_BUILD_FLAG_ALLOW_COMPACTION;
+        accel_options.buildFlags = OPTIX_BUILD_FLAG_PREFER_FAST_TRACE;
+        if (compact)
+            accel_options.buildFlags |= OPTIX_BUILD_FLAG_ALLOW_COMPACTION;
         accel_options.operation  = OPTIX_BUILD_OPERATION_BUILD;
         accel_options.motionOptions.numKeys = 0;
 
@@ -377,9 +373,15 @@ void prepare_ias(const SceneIR &sd,
                              ? OPTIX_INSTANCE_FLAG_NONE
                              : OPTIX_INSTANCE_FLAG_DISABLE_TRIANGLE_FACE_CULLING;
 
-        uint32_t instance_id = inst.instance_index;
+        // instanceId is recovered on the device as pi.instance: the owning
+        // Instance's registry id for an instanced hit, or 0 (null) for a
+        // top-level shape.
+        uint32_t instance_id = inst.owner_registry_id == SCENE_IR_NO_OWNER
+                                   ? 0u
+                                   : inst.owner_registry_id;
 
-        // to_world is col-major 3x4. OptiX wants row-major 3x4.
+        // to_world is column-major 3x4 (to_world[col*3 + row]). OptiX wants
+        // row-major 3x4.
         float t[12];
         for (int row = 0; row < 3; ++row)
             for (int col = 0; col < 4; ++col)
@@ -390,7 +392,7 @@ void prepare_ias(const SceneIR &sd,
               t[4], t[5], t[6],  t[7],
               t[8], t[9], t[10], t[11] },
             instance_id, blas_sbt_offset[inst.blas_index],
-            blas.visibility_mask, flags,
+            /* visibilityMask = */ 255, flags,
             blas_handle[inst.blas_index], /* pads = */ { 0, 0 }
         };
     }

@@ -15,8 +15,7 @@ NAMESPACE_BEGIN(detail)
 template <typename T, typename SFINAE = void> struct serialization_helper;
 NAMESPACE_END(detail)
 
-/**
- * Abstract seekable stream class
+/** \brief Abstract seekable stream class
  *
  * Specifies all functions to be implemented by stream
  * subclasses and provides various convenience functions
@@ -24,11 +23,10 @@ NAMESPACE_END(detail)
  *
  * All ``read*()`` and ``write*()`` methods support transparent
  * conversion based on the endianness of the underlying system and the
- * value passed to `set_byte_order()`. Whenever `host_byte_order()`
- * and `byte_order()` disagree, the endianness is swapped.
+ * value passed to \ref set_byte_order(). Whenever \ref host_byte_order()
+ * and \ref byte_order() disagree, the endianness is swapped.
  *
- * See Also:
- *     `FileStream`, `MemoryStream`, `DummyStream`
+ * \sa FileStream, MemoryStream, DummyStream
  */
 class MI_EXPORT_LIB Stream : public Object {
 
@@ -43,13 +41,13 @@ public:
 
     /// Defines the byte order (endianness) to use in this Stream
     enum EByteOrder {
-        EBigEndian = 0,                ///< PowerPC, SPARC, Motorola 68K
-        ELittleEndian = 1,             ///< x86, x86_64
-        ENetworkByteOrder = EBigEndian ///< Network byte order (an alias for big endian)
+        EBigEndian = 0,                /// PowerPC, SPARC, Motorola 68K
+        ELittleEndian = 1,             /// x86, x86_64
+        ENetworkByteOrder = EBigEndian /// Network byte order (an alias for big endian)
     };
 
     /**
-     * Creates a new stream.
+     * \brief Creates a new stream.
      *
      * By default, this function sets the stream byte order
      * to that of the system (i.e. no conversion is performed)
@@ -62,8 +60,7 @@ public:
     /// Returns a human-readable descriptor of the stream
     std::string to_string() const override;
 
-    /**
-     * Closes the stream.
+    /** \brief Closes the stream.
      *
      * No further read or write operations are permitted.
      *
@@ -76,35 +73,28 @@ public:
     virtual bool is_closed() const = 0;
 
     // =========================================================================
-    // Abstract methods that need to be implemented by subclasses
+    //! @{ \name Abstract methods that need to be implemented by subclasses
     // =========================================================================
 
     /**
-     * Reads a specified amount of data from the stream.
+     * \brief Reads a specified amount of data from the stream.
+     * \note This does <b>not</b> handle endianness swapping.
      *
-     * Note:
-     *     This does **not** handle endianness swapping. Implementations
-     *     need to handle endianness swap when appropriate.
-     *
-     * Raises:
-     *     RuntimeError: If the stream ended prematurely.
+     * Throws an exception when the stream ended prematurely.
+     * Implementations need to handle endianness swap when appropriate.
      */
     virtual void read(void *p, size_t size) = 0;
 
     /**
-     * Writes a specified amount of data into the stream.
+     * \brief Writes a specified amount of data into the stream.
+     * \note This does <b>not</b> handle endianness swapping.
      *
-     * Note:
-     *     This does **not** handle endianness swapping. Implementations
-     *     need to handle endianness swap when appropriate.
-     *
-     * Raises:
-     *     RuntimeError: If not all data could be written.
+     * Throws an exception when not all data could be written.
+     * Implementations need to handle endianness swap when appropriate.
      */
     virtual void write(const void *p, size_t size) = 0;
 
-    /**
-     * Seeks to a position inside the stream.
+    /** \brief Seeks to a position inside the stream.
      *
      * Seeking beyond the size of the buffer will not modify the length of
      * its contents. However, a subsequent write should start at the sought
@@ -112,13 +102,10 @@ public:
      */
     virtual void seek(size_t pos) = 0;
 
-    /**
-     * Truncates the stream to a given size.
+    /** \brief Truncates the stream to a given size.
      *
-     * The position is updated to ``min(old_position, size)``.
-     *
-     * Raises:
-     *     RuntimeError: If in read-only mode.
+     * The position is updated to <tt>min(old_position, size)</tt>.
+     * Throws an exception if in read-only mode.
      */
     virtual void truncate(size_t size) = 0;
 
@@ -137,15 +124,16 @@ public:
     /// Can we read from the stream?
     virtual bool can_read() const = 0;
 
+    /// @}
     // =========================================================================
 
     // =========================================================================
-    // Read and write values
+    //! @{ \name Read and write values
     // =========================================================================
 
     /**
-     * Reads one object of type T from the stream at the current position
-     * by delegating to the appropriate ``serialization_helper``.
+     * \brief Reads one object of type T from the stream at the current position
+     * by delegating to the appropriate <tt>serialization_helper</tt>.
      *
      * Endianness swapping is handled automatically if needed.
      */
@@ -156,8 +144,8 @@ public:
     }
 
     /**
-     * Reads multiple objects of type T from the stream at the current position
-     * by delegating to the appropriate ``serialization_helper``.
+     * \brief Reads multiple objects of type T from the stream at the current position
+     * by delegating to the appropriate <tt>serialization_helper</tt>.
      *
      * Endianness swapping is handled automatically if needed.
      */
@@ -168,8 +156,8 @@ public:
     }
 
     /**
-     * Reads one object of type T from the stream at the current position
-     * by delegating to the appropriate ``serialization_helper``.
+     * \brief Reads one object of type T from the stream at the current position
+     * by delegating to the appropriate <tt>serialization_helper</tt>.
      *
      * Endianness swapping is handled automatically if needed.
      */
@@ -180,8 +168,8 @@ public:
     }
 
     /**
-     * Reads multiple objects of type T from the stream at the current position
-     * by delegating to the appropriate ``serialization_helper``.
+     * \brief Reads multiple objects of type T from the stream at the current position
+     * by delegating to the appropriate <tt>serialization_helper</tt>.
      *
      * Endianness swapping is handled automatically if needed.
      */
@@ -203,14 +191,14 @@ public:
     /// Skip ahead by a given number of bytes
     void skip(size_t amount);
 
+    /// @}
     // =========================================================================
 
     // =========================================================================
-    // Endianness handling
+    //! @{ \name Endianness handling
     // =========================================================================
 
-    /**
-     * Sets the byte order to use in this stream.
+    /** \brief Sets the byte order to use in this stream.
      *
      * Automatic conversion will be performed on read and write operations
      * to match the system's native endianness.
@@ -233,6 +221,7 @@ public:
     static EByteOrder host_byte_order() { return m_host_byte_order; }
 
 
+    /// @}
     // =========================================================================
 
     MI_DECLARE_CLASS(Stream)
@@ -285,10 +274,9 @@ template <typename T, std::enable_if_t<sizeof(T) == 8, int> = 0> T swap(const T 
 #endif
 }
 
-/**
- * The ``serialization_helper<T>`` implementations for new types should
+/** \brief The serialization_helper<T> implementations for new types should
  * in general be implemented as a series of calls to the lower-level
- * ``serialization_helper::{read,write}`` functions.
+ * serialization_helper::{read,write} functions.
  * This way, endianness swapping needs only be handled at the lowest level.
  */
 template <typename T, typename SFINAE> struct serialization_helper {
@@ -299,10 +287,9 @@ template <typename T, typename SFINAE> struct serialization_helper {
         return descr;
     }
 
-    /**
-     * Writes ``count`` values of type T into stream ``s``
+    /** \brief Writes <tt>count</tt> values of type T into stream <tt>s</tt>
      * starting at its current position.
-     * Note: ``count`` is the number of values, **not** a size in bytes.
+     * Note: <tt>count</tt> is the number of values, <b>not</b> a size in bytes.
      *
      * Support for additional types can be added in any header file by
      * declaring a template specialization for your type.
@@ -318,10 +305,9 @@ template <typename T, typename SFINAE> struct serialization_helper {
         }
     }
 
-    /**
-     * Reads ``count`` values of type T from stream ``s``,
+    /** \brief Reads <tt>count</tt> values of type T from stream <tt>s</tt>,
      * starting at its current position.
-     * Note: ``count`` is the number of values, **not** a size in bytes.
+     * Note: <tt>count</tt> is the number of values, <b>not</b> a size in bytes.
      *
      * Support for additional types can be added in any header file by
      * declaring a template specialization for your type.
