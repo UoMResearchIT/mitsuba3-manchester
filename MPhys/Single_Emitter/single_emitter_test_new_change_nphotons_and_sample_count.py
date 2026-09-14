@@ -156,7 +156,7 @@ generate_times = {}
 volume_times = {}
 
 n_sizes = [1e2, 1e3, 1e4, 1e5, 1e6, 5e6,
-           1e7, 2e7, 5e7, 7e7]
+           1e7, 2e7, 5e7, 7e7, 1e8]
 for n_photons in n_sizes:
     n_photons = int(n_photons)
 # for n_photons in [10**n_size for n_size in range(9)]:

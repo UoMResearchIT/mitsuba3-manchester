@@ -8,6 +8,8 @@ import matplotlib.pyplot as plt
 # variants = ["cuda_mono", "cuda_ad_rgb"]
 mitsuba_states = ["current_mitsuba", "old_mitsuba"]
 variants = ["cuda_mono", "cuda_ad_rgb", "llvm_mono", "llvm_ad_rgb"]
+# variants = ["cuda_mono", "cuda_ad_rgb"]
+# variants = ["llvm_mono", "llvm_ad_rgb"]
 
 max_time = 0
 timing_data = []
@@ -26,15 +28,17 @@ print(timing_data)
 
 # Plot each variant for each column 
 columns = ["load", "render", "load_and_render", "full_time", "generate", "volume"]
+variant_colors = ["b", "orange", "g", "r"]
+
 
 for n_col, column in enumerate(columns):
     fig = plt.figure()
     for n_var in range(len(timing_data)):
         n_photons_list = [tn[0] for tn in timing_data[n_var][1]]
         if timing_data[n_var][0][:7] == "current":
-            plt.plot(n_photons_list, [tn[2*n_col+1] for tn in timing_data[n_var][1]], label=column+' '+timing_data[n_var][0], linestyle='solid')
+            plt.plot(n_photons_list, [tn[2*n_col+1] for tn in timing_data[n_var][1]], label=column+' '+timing_data[n_var][0], linestyle='solid', color=variant_colors[n_var % len(variants)])
         else:
-            plt.plot(n_photons_list, [tn[2*n_col+1] for tn in timing_data[n_var][1]], label=column+' '+timing_data[n_var][0], linestyle='dotted')
+            plt.plot(n_photons_list, [tn[2*n_col+1] for tn in timing_data[n_var][1]], label=column+' '+timing_data[n_var][0], linestyle='dotted', color=variant_colors[n_var % len(variants)])
         # boxplot, somehow - get the relevant column from the full data
         full_variant_data = timing_full_data[n_var]
         timing_vs_nphotons_dict = {}
@@ -52,7 +56,7 @@ for n_col, column in enumerate(columns):
             data.append([f[n_col] for f in timing_vs_nphotons_dict[key]])
         # fixed_w = 0.1
         # width = lambda p, w: 10**(np.log10(p)+w/2.)-10**(np.log10(p)-w/2.)
-        plt.boxplot(data, positions=n_photons_list)#, widths=width(n_photons_list, fixed_w))
+        plt.boxplot(data, positions=n_photons_list, showfliers=False) #, widths=width(n_photons_list, fixed_w))
 
     plt.legend()
     plt.xlim(1e1, 1e9)
