@@ -1,8 +1,8 @@
-# Compare the most recent stable version of Mitsuba to previous versions used in this experiment
+# Compare the most recent stable version of Mitsuba to previous versions used in earlier experiments
 
 ## Background / Method
 
-After updating the Manchester fork of Mitsuba to match changes in Mitsuba itself, it was noticed that the scaling behaviour seemed to have changed for larger numbers of photons. This experiment was run to check whether this was the case; the same Mitsuba script (`single_emitter_test_new_change_nphotons.py`) was run using the following versions:
+After updating the Manchester fork of Mitsuba to match changes in Mitsuba itself, it was noticed that the scaling behaviour seemed to have changed for larger numbers of photons. This experiment was run to check whether this was the case; the same Mitsuba script (`single_emitter_test_new_change_nphotons_and_sample_count.py`) was run using the following versions:
 
 - The "current" version of the Manchester fork (this was tested on `dev` at commit id `7350f312` from September 2026)
 - The "old" version of the Manchester fork around the time of previous experiments (commit id `ceb0e8f`)
