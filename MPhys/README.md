@@ -29,11 +29,15 @@ If you edit any C code, all that's required to recompile is to (re)run the `ninj
 
 Finally, you may find that you'll need to install requirements for mitsuba3 as appropriate; just use `pip` to do this.
 
+## Input files
+
+As stated below, most of the examples we have tested and used are in the `Single_Emitter` directory, in particular for the experiments in the `Single_Emitter/performance_scaling_experiments` directory. The original CSV file used to generate the photons in these scripts is zipped at `Single_Emitter/csv/photons_1000000_filtered.zip`, which when unzipped (simply use the `unzip` command in Linux) will get you the required file.
+
+The remaining csv input files in the `Single_Emitter/csv` directory (such as e.g. `test_new_photons_detected_spectral.csv`) were generated from this file, but you can also run the examples using these files by commenting/uncommenting code in the script files as required.
+
 ## Running examples
 
-The repository contains some examples of code, though you will likely find that some of them may not work, especially any which convert the (large) original CSV file created by the particle physics codebase Geant4 with ~10^6 photons in it. It's possible to edit the scripts to just run examples with "converted" photon files, which can be found for example in the `Single_Emitter/csv` directory, but you will have to come up with some way of generating photons for your particular use case, since we always use photons created in Geant4. The format of these files is relatively obvious from looking at them, but do contact (see below) if you have any questions.
-
-Most of the examples that have been run are the python scripts in the `Single_Emitter` directory, so please look at those to get ideas for your examples. It is likely that you will also have to build a scene for your simulations, to find out more about this look at the [mitsuba documentation](https://mitsuba.readthedocs.io/en/stable/index.html).
+Most of the examples that have been run are the python scripts in the `Single_Emitter` directory, so please look at those to get ideas for your examples. It is likely that you will also have to build a scene for your simulations, to find out more about this look at the [mitsuba documentation](https://mitsuba.readthedocs.io/en/stable/index.html). For creating object files for such scenes, look at the Geant4 example code and geometry conversion code in our examples repository at [Geant4-Mitsuba3-Coupling](https://github.com/UoMResearchIT/Geant4-Mitsuba3-Coupling).
 
 Note: the repository also contains Jupyter notebooks; it's possible to set up your environment to be able to then run notebooks in a Windows browser.  Follow the instructions at [https://code.adonline.id.au/jupyter-notebook-in-windows-subsystem-for-linux-wsl/](https://code.adonline.id.au/jupyter-notebook-in-windows-subsystem-for-linux-wsl/).
 
@@ -43,4 +47,4 @@ If you have any issues please contact [andrew.gait@manchester.ac.uk](mailto:andr
 
 ## Contributing
 
-If after reading and understanding our implementation you wish to contribute to it then please feel free to make pull requests with any changes and they will be reviewed in the usual manner.
+If after reading and understanding our implementation you wish to contribute to it then please feel free to make pull requests with any changes and they will be reviewed in the usual manner. You are also free to fork this repository to do any further work.
