@@ -43,9 +43,8 @@ endif()
 option(MI_PROFILER_ITTNOTIFY "Forward profiler events (to Intel VTune)?" OFF)
 option(MI_PROFILER_NVTX      "Forward profiler events (to NVIDIA Nsight)?" OFF)
 
-if (NOT APPLE)
-  option(MI_ENABLE_OPTIX_DEBUG_VALIDATION "Enable debug flag for OptiX" OFF)
-endif()
+option(MI_STABLE_ABI "Build Python extension using the CPython stable ABI? (Only relevant when using scikit-build)" OFF)
+mark_as_advanced(MI_STABLE_ABI)
 
 # ----------------------------------------------------------
 #  Check if submodules have been checked out, or fail early
@@ -84,6 +83,12 @@ include(ext/drjit/ext/drjit-core/ext/nanothread/ext/cmake-defaults/CMakeLists.tx
 # ----------------------------------------------------------
 
 if (SKBUILD)
+
+  set(CMAKE_INSTALL_LIBDIR mitsuba)
+  set(CMAKE_INSTALL_BINDIR mitsuba)
+  set(CMAKE_INSTALL_DATAROOTDIR mitsuba/data)
+  set(CMAKE_INSTALL_INCLUDEDIR mitsuba/include)
+
   set(MI_DRJIT_CMAKE_DIR "" CACHE STRING "Location of Dr.Jit's CMake directory that should be used instead of the output of `drjit.get_cmake_dir()` when building with scikit-build.")
   mark_as_advanced(MI_DRJIT_CMAKE_DIR)
 
@@ -105,8 +110,13 @@ endif()
 # ----------------------------------------------------------
 
 if (NOT EXISTS ${CMAKE_CURRENT_BINARY_DIR}/mitsuba.conf)
-  # Default: only scalar modes (RGB, Spectral)
-  set(MI_DEFAULT_VARIANTS "scalar_rgb;scalar_spectral;cuda_ad_rgb;llvm_ad_rgb;llvm_ad_spectral" CACHE STRING "Default Mitsuba variants that should be included if no mitsuba.conf file exists")
+  if (APPLE)
+    set(MI_DEFAULT_VARIANTS "scalar_rgb,scalar_spectral,metal_ad_rgb,llvm_ad_rgb,llvm_ad_spectral" CACHE STRING "Default Mitsuba variants that should be included if no mitsuba.conf file exists")
+  else()
+    set(MI_DEFAULT_VARIANTS "scalar_rgb,scalar_spectral,cuda_ad_rgb,llvm_ad_rgb,llvm_ad_spectral" CACHE STRING "Default Mitsuba variants that should be included if no mitsuba.conf file exists")
+  endif()
+  string(REPLACE "," ";" MI_DEFAULT_VARIANTS "${MI_DEFAULT_VARIANTS}")
+  message(STATUS "MI_DEFAULT_VARIANTS: ${MI_DEFAULT_VARIANTS}")
   mark_as_advanced(MI_DEFAULT_VARIANTS)
   foreach(TMP ${MI_DEFAULT_VARIANTS})
     string(APPEND INSERT_CONFIGURATIONS_HERE "\"${TMP}\", ")
@@ -168,7 +178,11 @@ if (MI_VARIANTS MATCHES "llvm_")
   set(MI_ENABLE_LLVM ON)
 endif()
 
-if (MI_ENABLE_LLVM OR MI_ENABLE_CUDA)
+if (MI_VARIANTS MATCHES "metal_")
+  set(MI_ENABLE_METAL ON)
+endif()
+
+if (MI_ENABLE_LLVM OR MI_ENABLE_CUDA OR MI_ENABLE_METAL)
   set(MI_ENABLE_JIT ON)
 endif()
 
@@ -287,7 +301,7 @@ set(CMAKE_INSTALL_RPATH "${MI_ORIGIN};${MI_ORIGIN}/../drjit")
 # Build the dependencies
 add_subdirectory(ext)
 
-# Always add the include directories for tinyformat, Dr.Jit and Eigen
+# Always add the include directories for tinyformat, nanobind, Dr.Jit and Eigen
 include_directories(include
   ${TINYFORMAT_INCLUDE_DIRS}
   ${NANOBIND_INCLUDE_DIRS}
@@ -303,21 +317,17 @@ if (MI_ENABLE_LLVM)
   add_definitions(-DMI_ENABLE_LLVM=1)
 endif()
 
+if (MI_ENABLE_METAL)
+  message(STATUS "Mitsuba: using Metal for GPU ray tracing.")
+  add_definitions(-DMI_ENABLE_METAL=1)
+endif()
+
 if (MI_ENABLE_EMBREE)
   include_directories(${EMBREE_INCLUDE_DIRS})
   add_definitions(-DMI_ENABLE_EMBREE=1)
   message(STATUS "Mitsuba: using Embree for CPU ray tracing.")
 else()
   message(STATUS "Mitsuba: using built-in implementation for CPU ray tracing.")
-endif()
-
-if (MI_ENABLE_OPTIX_DEBUG_VALIDATION)
-  add_definitions(-DMI_ENABLE_OPTIX_DEBUG_VALIDATION)
-  set(DRJIT_ENABLE_OPTIX_DEBUG_VALIDATION ON CACHE BOOL "Dr.Jit: OptiX debug and validation flags enabled." FORCE)
-  message(STATUS "Mitsuba: OptiX debug and validation flags enabled.")
-else()
-  set(DRJIT_ENABLE_OPTIX_DEBUG_VALIDATION OFF CACHE BOOL "Dr.Jit: OptiX debug and validation flags disabled." FORCE)
-  message(STATUS "Mitsuba: OptiX debug and validation flags disabled.")
 endif()
 
 if (MI_ENABLE_AUTODIFF)
@@ -364,6 +374,18 @@ if (MSVC)
 
   # Don't complain about incompatible modifier on explicit instantiations
   add_compile_options(/wd4910)
+
+  # Member definitions of exported template classes live in separate .cpp files
+  add_compile_options(/wd4661)
+
+  # Ensure source and execution charset is encoded as UTF-8
+  add_compile_options(/utf-8)
+
+  # Workaround to avoid a particular crash due to MS VC++ runtime library binary 
+  # incompatibility. In general the runtime version needs to be at least as new 
+  # as toolset version but this define provides one such "escape hatch" if that 
+  # strictly isn't the case to combat against a commonly encountered reported crash
+  add_compile_options(-D_DISABLE_CONSTEXPR_MUTEX_CONSTRUCTOR)
 endif()
 
 include(TestBigEndian)
@@ -476,14 +498,12 @@ set(MI_DEPEND
   IlmImf IlmThread Imath Iex IexMath Half pugixml
 )
 
-if (CMAKE_SYSTEM_PROCESSOR MATCHES "(x86_64)|(amd64)|(AMD64)")
-  set(MI_DEPEND ${MI_DEPEND} asmjit)
-endif()
+list(APPEND MI_DEPEND struct-jit)
 
 list(APPEND MI_DEPEND png jpeg)
 
 if (WIN32)
-list(APPEND MI_DEPEND zlib)
+  list(APPEND MI_DEPEND zlib)
 endif()
 
 if (MI_ENABLE_EMBREE)
@@ -492,6 +512,14 @@ endif()
 
 if (NOT SKBUILD)
   list(APPEND MI_DEPEND nanothread)
+
+  if (MI_ENABLE_JIT)
+    list(APPEND MI_DEPEND drjit-core)
+  endif()
+
+  if (MI_ENABLE_AUTODIFF)
+    list(APPEND MI_DEPEND drjit-extra)
+  endif()
 endif()
 
 # Copy shared libraries to Python folders (no rpath on Windows)
@@ -510,7 +538,6 @@ if (MSVC AND MI_ENABLE_PYTHON)
       TARGET copy-targets POST_BUILD
       COMMAND ${CMAKE_COMMAND} -E copy_if_different
         $<TARGET_FILE:${target}> ${COPY_TARGET_DESTINATION}
-      DEPENDS ${target}
     )
   endforeach(target)
 
@@ -573,16 +600,17 @@ install(
 
 add_custom_target(copy-resources ALL DEPENDS ${MI_COPY_FILES})
 
+# IOR data
 file(GLOB IOR_FILES "${CMAKE_CURRENT_SOURCE_DIR}/resources/data/ior/*spd")
 add_custom_command(
-  TARGET copy-resources DEPENDS IOR_FILES
+  TARGET copy-resources POST_BUILD
   COMMAND ${CMAKE_COMMAND} -E copy_directory
   "${CMAKE_CURRENT_SOURCE_DIR}/resources/data/ior"
   "${MI_BINARY_DIR}/data/ior"
 )
 if (MSVC AND MI_ENABLE_PYTHON)
   add_custom_command(
-    TARGET copy-resources DEPENDS IOR_FILES
+    TARGET copy-resources POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_directory
     "${CMAKE_CURRENT_SOURCE_DIR}/resources/data/ior"
     "${MI_BINARY_DIR}/python/mitsuba/data/ior"
@@ -590,5 +618,26 @@ if (MSVC AND MI_ENABLE_PYTHON)
 endif()
 install(
   DIRECTORY ${MI_BINARY_DIR}/data/ior
+  DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}
+)
+
+# Sunsky data
+file(GLOB SUNSKY_FILES "${CMAKE_CURRENT_SOURCE_DIR}/resources/data/sunsky/output/*.bin")
+add_custom_command(
+  TARGET copy-resources POST_BUILD
+  COMMAND ${CMAKE_COMMAND} -E copy_directory
+  "${CMAKE_CURRENT_SOURCE_DIR}/resources/data/sunsky/output"
+  "${MI_BINARY_DIR}/data/sunsky"
+)
+if (MSVC AND MI_ENABLE_PYTHON)
+  add_custom_command(
+    TARGET copy-resources POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+    "${CMAKE_CURRENT_SOURCE_DIR}/resources/data/sunsky/output"
+    "${MI_BINARY_DIR}/python/mitsuba/data/sunsky"
+  )
+endif()
+install(
+  DIRECTORY ${MI_BINARY_DIR}/data/sunsky
   DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}
 )

@@ -9,7 +9,7 @@
 #pragma once
 
 #define MI_VERSION_MAJOR 3
-#define MI_VERSION_MINOR 5
+#define MI_VERSION_MINOR 9
 #define MI_VERSION_PATCH 0
 
 #define MI_STRINGIFY(x) #x
@@ -22,7 +22,7 @@
     MI_TOSTRING(MI_VERSION_PATCH)
 
 /// Year of the current release
-#define MI_YEAR "2022"
+#define MI_YEAR "2024"
 
 /// Authors list
 #define MI_AUTHORS "Realistic Graphics Lab, EPFL"

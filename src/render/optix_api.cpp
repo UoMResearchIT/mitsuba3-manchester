@@ -5,7 +5,6 @@
 #include <drjit-core/optix.h>
 #define OPTIX_API_IMPL
 #include <mitsuba/render/optix_api.h>
-#include <mitsuba/render/optix/shapes.h>
 
 NAMESPACE_BEGIN(mitsuba)
 
@@ -27,7 +26,7 @@ void optix_initialize() {
     L(optixDenoiserSetup);
     L(optixDenoiserInvoke);
     L(optixDenoiserComputeIntensity);
-    L(optixModuleCreateFromPTXWithTasks);
+    L(optixModuleCreateWithTasks);
     L(optixModuleGetCompilationState);
     L(optixTaskExecute);
     L(optixProgramGroupCreate);

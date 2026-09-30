@@ -3,11 +3,14 @@
 *.sublime-workspace
 
 # VS & VSCode
-/.vscode
-/.vs
+/\.vscode
+/\.vs
+
+# JetBrains
+/\.idea
 
 # Jupyter
-/.ipynb_checkpoints
+*.ipynb_checkpoints
 
 # Python
 __pycache__
@@ -16,6 +19,9 @@ __pycache__
 
 # macOS
 \.DS_Store
+
+# Clangd
+/\.cache
 
 # Default build directory
 /build*
@@ -28,3 +34,11 @@ __pycache__
 /docs/src/quickstart
 /docs/src/generated
 /docs/resources
+
+# new png output / csv input / profiling output
+/MPhys/Single_Emitter/png/*intensity* 
+/MPhys/Single_Emitter/png/*diff* 
+/MPhys/Single_Emitter/png/*new* 
+*1000000*csv
+/MPhys/Single_Emitter/cluster*
+/MPhys/Single_Emitter/profiling*
